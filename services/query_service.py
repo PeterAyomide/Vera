@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from typing import Dict, List, Optional
 
 from openai import AsyncOpenAI
@@ -52,6 +53,12 @@ RAG_INTENT_KEYWORDS = {
     "document", "documents", "knowledge base", "kb", "policy", "playbook", "pdf",
     "file", "files", "uploaded", "upload", "source", "sources", "pricing", "retainer",
     "case study", "proposal", "contract", "scope", "timeline", "reference", "cite",
+}
+
+BUSINESS_QUERY_KEYWORDS = {
+    "agency", "client", "clients", "lead", "leads", "pricing", "retainer", "service",
+    "services", "proposal", "project", "pipeline", "qualification", "outreach", "email",
+    "sales", "conversion", "close", "playbook", "onboarding", "timeline",
 }
 
 
@@ -198,6 +205,9 @@ def _looks_general_chat(question: str) -> bool:
     if not q:
         return True
 
+    if any(k in q for k in BUSINESS_QUERY_KEYWORDS):
+        return False
+
     if any(k in q for k in RAG_INTENT_KEYWORDS):
         return False
 
@@ -217,7 +227,9 @@ async def _answer_general_chat(question: str, session_id: Optional[str] = None) 
         {
             "role": "system",
             "content": (
-                "You are Aria, a helpful AI assistant for agency teams. "
+                "You are Aria, an AI employee on this agency's team. "
+                "When discussing business operations, speak in first-person team language "
+                "like 'we', 'our', and 'the team'. "
                 "Respond clearly and conversationally. "
                 "Do not mention missing database knowledge unless explicitly asked "
                 "for a factual detail from uploaded documents."
@@ -239,12 +251,14 @@ async def _answer_general_chat(question: str, session_id: Optional[str] = None) 
 # ── System prompt – Aria identity ─────────────────────────────────────────────
 
 _SYSTEM_PROMPT = """\
-You are **Aria**, the AI knowledge assistant and digital brain of a forward-thinking agency. \
+You are **Aria**, an AI employee and digital brain of this agency. \
 You are knowledgeable, professional, and slightly personable — like a highly capable senior \
 analyst who genuinely cares about getting the right answer.
 
 You are answering using company knowledge context provided below. \
 Use that context as your source of truth for factual claims.
+
+When answering business-related questions, respond as part of the internal team using "we" and "our".
 
 Core rules:
 1. Answer directly and concisely. No filler phrases like "Great question!" or "Certainly!".
@@ -257,6 +271,19 @@ Core rules:
    (e.g., "As I mentioned earlier…").
 8. Keep responses structured — use bullet points or numbered lists where they improve clarity.
 """
+
+
+def _strip_document_label(text: str) -> str:
+    """Remove leading [Document: ...] labels from chunk content."""
+    return re.sub(r"^\s*\[Document:[^\]]+\]\s*\n*", "", text).strip()
+
+
+def _clean_answer_output(text: str) -> str:
+    """Remove leaked retrieval labels from answer text."""
+    cleaned = text or ""
+    cleaned = re.sub(r"\[Document:[^\]]+\]", "", cleaned)
+    cleaned = re.sub(r"\n\s*Sources?:[\s\S]*$", "", cleaned, flags=re.IGNORECASE)
+    return cleaned.strip()
 
 
 # ── Main RAG pipeline ─────────────────────────────────────────────────────────
@@ -326,14 +353,16 @@ async def query_knowledge(
             if end != -1:
                 doc_name = content[len("[Document:"):end].strip()
 
-        context_parts.append(f"[Source {i} — {doc_name or 'Unknown'}]\n{content}")
+        clean_content = _strip_document_label(content)
+
+        context_parts.append(f"[Source {i} — {doc_name or 'Unknown'}]\n{clean_content}")
         sources.append({
             "chunk_id": chunk.get("id"),
             "document_id": chunk.get("document_id"),
             "document_name": doc_name,
             "similarity": round(chunk.get("similarity", 0), 4),
             "relevance": round(chunk.get("similarity", 0) * 100),
-            "snippet": content[:200] + "…" if len(content) > 200 else content,
+            "snippet": clean_content[:200] + "…" if len(clean_content) > 200 else clean_content,
         })
 
     context_block = "\n\n---\n\n".join(context_parts)
@@ -359,7 +388,7 @@ async def query_knowledge(
         messages=messages,
     )
 
-    answer = completion.choices[0].message.content
+    answer = _clean_answer_output(completion.choices[0].message.content or "")
     logger.info("Answer: %.80s…", answer)
 
     # 8. Persist session memory

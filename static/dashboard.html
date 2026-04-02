@@ -6,6 +6,8 @@
 <title>Vera</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=Instrument+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -24,6 +26,7 @@
 }
 html,body{height:100%;overflow:hidden}
 body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:15px;line-height:1.6;display:flex;-webkit-font-smoothing:antialiased}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:16px;line-height:1.65;display:flex;-webkit-font-smoothing:antialiased}
 ::-webkit-scrollbar{width:3px;height:3px}
 ::-webkit-scrollbar-thumb{background:var(--border3);border-radius:3px}
 
@@ -75,6 +78,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:15
 .topbar{height:52px;padding:0 22px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .topbar-left{display:flex;align-items:center;gap:12px}
 .page-title{font-family:var(--display);font-size:18px;font-weight:600;letter-spacing:-.3px}
+.page-title{font-family:var(--display);font-size:20px;font-weight:600;letter-spacing:-.3px}
 .status-pill{font-family:var(--mono);font-size:9px;padding:3px 8px;border-radius:20px;letter-spacing:.4px;text-transform:uppercase}
 .pill-live{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
 .pill-off{background:var(--coral-bg);color:var(--coral);border:1px solid var(--coral-bd)}
@@ -82,6 +86,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:15
 
 /* ─── BUTTONS ─── */
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 15px;border-radius:var(--r);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all var(--ease);white-space:nowrap}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:var(--r);font-family:var(--font);font-size:14px;font-weight:500;cursor:pointer;border:none;transition:all var(--ease);white-space:nowrap}
 .btn-primary{background:var(--amber);color:#0c0c0c}.btn-primary:hover{background:var(--amber2)}
 .btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2)}.btn-ghost:hover{border-color:var(--border3);color:var(--text)}
 .btn-teal{background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-bd)}.btn-teal:hover{background:var(--teal-bd)}
@@ -96,13 +101,14 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:15
 .stats-row{display:flex;gap:1px;border-bottom:1px solid var(--border);background:var(--border);flex-shrink:0}
 .stat-card{flex:1;background:var(--bg2);padding:14px 18px}
 .stat-label{font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px}
-.stat-val{font-family:var(--display);font-size:30px;font-weight:700;letter-spacing:-1.5px;margin-top:4px;line-height:1}
-.stat-sub{font-size:12px;color:var(--text2);margin-top:3px}
+.stat-val{font-family:var(--display);font-size:34px;font-weight:700;letter-spacing:-1.5px;margin-top:4px;line-height:1}
+.stat-sub{font-size:13px;color:var(--text2);margin-top:3px}
 
 /* ─── KANBAN ─── */
 .kanban-wrap{flex:1;display:flex;overflow:hidden}
 .kanban-scroll{flex:1;display:flex;gap:12px;padding:16px 20px;overflow-x:auto;overflow-y:hidden;align-items:flex-start}
 .pipeline-rail{width:320px;min-width:320px;border-left:1px solid var(--border);background:var(--bg2);padding:14px 14px 12px;display:flex;flex-direction:column;gap:12px;overflow-y:auto}
+.pipeline-rail.collapsed{display:none}
 .panel-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:12px}
 .panel-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
 .panel-title{font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
@@ -143,9 +149,14 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:15
 .card-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .card-company{font-size:12px;color:var(--text2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .score-num{font-family:var(--display);font-size:24px;font-weight:700;line-height:1;letter-spacing:-1px;flex-shrink:0}
+.card-name{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-company{font-size:13px;color:var(--text2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.score-num{font-family:var(--display);font-size:26px;font-weight:700;line-height:1;letter-spacing:-1px;flex-shrink:0}
 .s-high{color:var(--green)}.s-mid{color:var(--amber)}.s-low{color:var(--coral)}.s-dead{color:var(--text3)}
 .card-msg{font-size:12.5px;color:var(--text2);line-height:1.55;display:-webkit-box;line-clamp:2;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .card-action{font-size:11.5px;color:var(--teal);margin-top:7px;line-height:1.4}
+.card-msg{font-size:13.5px;color:var(--text2);line-height:1.6;display:-webkit-box;line-clamp:2;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card-action{font-size:12.5px;color:var(--teal);margin-top:7px;line-height:1.45}
 .card-time{font-family:var(--mono);font-size:9.5px;color:var(--text3);margin-top:6px}
 
 /* ─── DETAIL PANEL ─── */
@@ -153,6 +164,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:15
 .detail-panel.open{width:340px;min-width:340px}
 .detail-head{padding:13px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .detail-head-name{font-family:var(--display);font-size:16px;font-weight:600;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.detail-head-name{font-family:var(--display);font-size:18px;font-weight:600;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .close-btn{background:none;border:none;color:var(--text3);cursor:pointer;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:4px;transition:all var(--ease);flex-shrink:0}
 .close-btn:hover{background:var(--bg3);color:var(--text2)}
 .detail-body{flex:1;overflow-y:auto;padding:15px;display:flex;flex-direction:column;gap:16px}
@@ -160,6 +172,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:15
 .score-hero{display:flex;align-items:center;gap:13px;padding:13px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2)}
 .score-big{font-family:var(--display);font-size:44px;font-weight:700;letter-spacing:-3px;line-height:1}
 .score-company{font-size:13px;color:var(--text2);margin-bottom:5px}
+.score-company{font-size:14px;color:var(--text2);margin-bottom:5px}
 .score-priority{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:500;padding:2px 8px;border-radius:20px}
 .pr-high{background:var(--coral-bg);color:var(--coral);border:1px solid var(--coral-bd)}
 .pr-med{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd)}
@@ -167,9 +180,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:15
 .field{margin-bottom:9px}
 .fl{font-size:11px;color:var(--text3);margin-bottom:2px}
 .fv{font-size:13.5px;color:var(--text2);line-height:1.55}
+.fv{font-size:14.5px;color:var(--text2);line-height:1.6}
 .fv-mono{font-family:var(--mono);font-size:12px}
 .action-box{background:var(--teal-bg);border:1px solid var(--teal-bd);border-radius:var(--r);padding:10px 12px;font-size:12.5px;color:var(--teal);line-height:1.55}
 .draft-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:12px;min-height:80px;font-size:12.5px;color:var(--text2);line-height:1.75;position:relative}
+.draft-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:12px;min-height:80px;font-size:13.5px;color:var(--text2);line-height:1.75;position:relative}
 .draft-placeholder{color:var(--text3);font-style:italic;font-size:12px}
 .draft-text{white-space:pre-wrap}
 .draft-gen{display:flex;align-items:center;gap:8px;color:var(--text3);font-size:11px;font-style:italic}
@@ -185,15 +200,24 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:15
 .chat-empty-icon{font-size:28px;margin-bottom:8px;opacity:.35}
 .chat-empty-title{font-family:var(--display);font-size:19px;font-weight:600;color:var(--text2);margin-bottom:4px}
 .chat-empty-sub{font-size:13px;max-width:320px;line-height:1.7}
+.chat-empty-title{font-family:var(--display);font-size:21px;font-weight:600;color:var(--text2);margin-bottom:4px}
+.chat-empty-sub{font-size:14px;max-width:360px;line-height:1.75}
 .chips{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-top:14px}
 .chip{background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:8px 14px;font-size:13px;color:var(--text2);cursor:pointer;transition:all var(--ease)}
+.chip{background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:8px 14px;font-size:14px;color:var(--text2);cursor:pointer;transition:all var(--ease)}
 .chip:hover{border-color:var(--teal-bd);color:var(--teal);background:var(--teal-bg)}
 .msg-row{display:flex;flex-direction:column;gap:5px}
 .msg-row.user{align-items:flex-end}
 .msg-row.ai{align-items:flex-start}
 .msg-bubble{max-width:78%;padding:12px 15px;border-radius:10px;font-size:14px;line-height:1.75}
+.msg-bubble{max-width:78%;padding:13px 16px;border-radius:10px;font-size:15.5px;line-height:1.8}
 .msg-row.user .msg-bubble{background:var(--amber);color:#0c0c0c;font-weight:500;border-radius:10px 10px 2px 10px}
 .msg-row.ai .msg-bubble{background:var(--bg3);border:1px solid var(--border);border-radius:10px 10px 10px 2px}
+.msg-bubble p{margin:0 0 8px}
+.msg-bubble p:last-child{margin-bottom:0}
+.msg-bubble ul,.msg-bubble ol{padding-left:20px;margin:8px 0}
+.msg-bubble code{font-family:var(--mono);font-size:.92em;background:var(--bg4);padding:1px 4px;border-radius:4px}
+.msg-bubble pre{white-space:pre-wrap;background:var(--bg4);border:1px solid var(--border2);padding:8px;border-radius:8px;overflow:auto}
 .msg-sources{display:flex;gap:6px;align-items:flex-start;flex-direction:column;max-width:78%;background:var(--bg3);border:1px dashed var(--border2);border-radius:8px;padding:8px 10px}
 .src-lbl-sm{font-size:10px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px}
 .chat-foot{padding:14px 24px;border-top:1px solid var(--border);background:var(--bg2);flex-shrink:0}
@@ -202,6 +226,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:15
 @keyframes glow{0%,100%{opacity:.3}50%{opacity:1}}
 .chat-input-row{display:flex;gap:8px}
 .chat-input{flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);padding:12px 14px;font-family:var(--font);font-size:14px;color:var(--text);outline:none;transition:border-color var(--ease)}
+.chat-input{flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);padding:13px 15px;font-family:var(--font);font-size:15px;color:var(--text);outline:none;transition:border-color var(--ease)}
 .chat-input:focus{border-color:var(--teal-bd)}
 .chat-input::placeholder{color:var(--text3)}
 .send-btn{width:38px;height:38px;background:var(--teal);border:none;border-radius:var(--r2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all var(--ease);flex-shrink:0}
@@ -214,6 +239,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:15
 .upload-icon{font-size:22px;margin-bottom:10px;opacity:.45}
 .upload-title{font-family:var(--display);font-size:16px;font-weight:600;color:var(--text2);margin-bottom:4px}
 .upload-sub{font-size:12.5px;color:var(--text3)}.upload-sub span{color:var(--amber);cursor:pointer}
+.upload-title{font-family:var(--display);font-size:18px;font-weight:600;color:var(--text2);margin-bottom:4px}
+.upload-sub{font-size:13.5px;color:var(--text3)}.upload-sub span{color:var(--amber);cursor:pointer}
 .docs-section-title{font-family:var(--mono);font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px}
 .doc-row{display:flex;align-items:center;gap:11px;padding:11px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);transition:all var(--ease)}
 .doc-row:hover{border-color:var(--border2)}
@@ -470,7 +497,6 @@ window.onload = () => {
 async function loadAll() {
   await Promise.allSettled([loadLeads(), loadSessions()]);
   renderDocs();
-  seedActivityFeed();
 }
 
 // ── API ───────────────────────────────────────────────────────────────────────
@@ -621,13 +647,6 @@ function renderActivityFeed() {
     </div>`).join('');
 }
 
-function seedActivityFeed() {
-  if (activityFeed.length) return;
-  pushActivity('💡', 'Suggested action generated for priority leads');
-  pushActivity('✉', 'Outreach engine standing by for email drafting');
-  pushActivity('📚', 'CorporateBrain indexed your knowledge base');
-}
-
 function clearActivityFeed() {
   activityFeed = [];
   if (demoFeedTimer) {
@@ -671,17 +690,17 @@ function ago(ts){
 
 function renderCard(l) {
   const action = l.recommended_action
-    ? `<div class="card-action">⚡ ${l.recommended_action.slice(0,70)}${l.recommended_action.length>70?'…':''}</div>` : '';
+    ? `<div class="card-action">⚡ ${escHtml(l.recommended_action.slice(0,70))}${l.recommended_action.length>70?'…':''}</div>` : '';
   return `
     <div class="lead-card ${pc(l.priority)}" onclick="openDetail('${l.id}')">
       <div class="card-top">
         <div class="card-info">
-          <div class="card-name">${l.name}</div>
-          <div class="card-company">${l.company||'—'}</div>
+          <div class="card-name">${escHtml(l.name||'Unknown')}</div>
+          <div class="card-company">${escHtml(l.company||'—')}</div>
         </div>
         <div class="score-num ${sc(l.score)}">${Math.round(l.score||0)}</div>
       </div>
-      <div class="card-msg">${l.notes||'No message.'}</div>
+      <div class="card-msg">${escHtml(l.notes||'No message.')}</div>
       ${action}
       <div class="card-time">${ago(l.created_at)}</div>
     </div>`;
@@ -691,8 +710,9 @@ function renderCard(l) {
 async function openDetail(id) {
   const l = leads.find(x=>x.id===id);
   if(!l) return;
-  document.getElementById('detail-name').textContent = l.name;
+  document.getElementById('detail-name').textContent = l.name || 'Unknown';
   document.getElementById('detail-panel').classList.add('open');
+  document.querySelector('.pipeline-rail')?.classList.add('collapsed');
 
   const scCls = sc(l.score);
   const pLabel = ['','Low priority','Medium priority','High priority'][l.priority]||'Unscored';
@@ -704,7 +724,7 @@ async function openDetail(id) {
       <div class="score-hero">
         <div class="score-big ${scCls}">${Math.round(l.score||0)}</div>
         <div>
-          <div class="score-company">${l.company||'No company'}</div>
+          <div class="score-company">${escHtml(l.company||'No company')}</div>
           <div class="score-priority ${pCls}">${pLabel}</div>
         </div>
       </div>
@@ -712,13 +732,13 @@ async function openDetail(id) {
     <div>
       <div class="sec-title">Contact</div>
       <div class="field"><div class="fl">Email</div><div class="fv fv-mono">${l.email||'—'}</div></div>
-      <div class="field"><div class="fl">Message</div><div class="fv">${l.notes||'—'}</div></div>
+      <div class="field"><div class="fl">Message</div><div class="fv">${escHtml(l.notes||'—')}</div></div>
       <div class="field"><div class="fl">Added</div><div class="fv fv-mono">${new Date(l.created_at).toLocaleDateString()}</div></div>
     </div>
     ${l.recommended_action ? `
     <div>
       <div class="sec-title">AI Recommended Action</div>
-      <div class="action-box">⚡ ${l.recommended_action}</div>
+      <div class="action-box">⚡ ${escHtml(l.recommended_action)}</div>
     </div>` : ''}
     <div>
       <div class="sec-title">Outreach Engine</div>
@@ -735,6 +755,7 @@ async function openDetail(id) {
 
 function closeDetail() {
   document.getElementById('detail-panel').classList.remove('open');
+  document.querySelector('.pipeline-rail')?.classList.remove('collapsed');
 }
 
 async function genDraft(id) {
@@ -969,11 +990,20 @@ function appendMsg(role, content, sources) {
   const srcsHtml = normalizedSources.length
     ? `<div class="msg-sources"><span class="src-lbl-sm">References</span>${normalizedSources.map(s=>`<span class="src-tag">${escHtml(s)}</span>`).join('')}</div>`
     : '';
+  const rendered = role === 'ai'
+    ? renderMarkdown(cleanContent)
+    : escHtml(cleanContent).replace(/\n/g, '<br>');
   container.innerHTML += `
     <div class="msg-row ${role}">
-      <div class="msg-bubble">${escHtml(cleanContent)}</div>
+      <div class="msg-bubble">${rendered}</div>
       ${role==='ai'?srcsHtml:''}
     </div>`;
+}
+
+function renderMarkdown(text) {
+  const raw = String(text || '');
+  const parsed = window.marked ? window.marked.parse(raw) : escHtml(raw).replace(/\n/g, '<br>');
+  return window.DOMPurify ? window.DOMPurify.sanitize(parsed) : parsed;
 }
 
 function normalizeSources(sources) {
@@ -991,6 +1021,7 @@ function normalizeSources(sources) {
 function stripInlineSources(text) {
   return String(text || '')
     .replace(/\n\s*Sources?:[\s\S]*$/i, '')
+    .replace(/\[Document:[^\]]+\]/g, '')
     .replace(/\n\s*\[[^\]]+\]\s*$/gm, '')
     .trim();
 }

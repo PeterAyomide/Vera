@@ -25,8 +25,7 @@
   --ease:180ms cubic-bezier(.4,0,.2,1);
 }
 html,body{height:100%;overflow:hidden}
-body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:15px;line-height:1.6;display:flex;-webkit-font-smoothing:antialiased}
-body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:16px;line-height:1.65;display:flex;-webkit-font-smoothing:antialiased}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:17px;line-height:1.7;display:flex;-webkit-font-smoothing:antialiased}
 ::-webkit-scrollbar{width:3px;height:3px}
 ::-webkit-scrollbar-thumb{background:var(--border3);border-radius:3px}
 
@@ -75,14 +74,14 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:16
 
 /* ─── MAIN ─── */
 .main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
-.topbar{height:52px;padding:0 22px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.topbar-left{display:flex;align-items:center;gap:12px}
-.page-title{font-family:var(--display);font-size:18px;font-weight:600;letter-spacing:-.3px}
-.page-title{font-family:var(--display);font-size:20px;font-weight:600;letter-spacing:-.3px}
-.status-pill{font-family:var(--mono);font-size:9px;padding:3px 8px;border-radius:20px;letter-spacing:.4px;text-transform:uppercase}
-.pill-live{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
-.pill-off{background:var(--coral-bg);color:var(--coral);border:1px solid var(--coral-bd)}
-.topbar-right{display:flex;align-items:center;gap:8px}
+.topbar{padding:12px 20px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:14px;flex-shrink:0}
+.cmd-brand{display:flex;flex-direction:column;min-width:180px}
+.cmd-title{font-family:var(--display);font-size:24px;font-weight:700;letter-spacing:-.5px;line-height:1}
+.cmd-sub{font-family:var(--mono);font-size:11px;color:var(--text3);letter-spacing:.6px;text-transform:uppercase;margin-top:4px}
+.cmd-actions{display:flex;align-items:center;gap:8px;flex:1;justify-content:flex-end}
+.cmd-input{width:min(460px,100%);background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:11px 14px;color:var(--text);font-size:15px;font-family:var(--font);outline:none;transition:border-color var(--ease)}
+.cmd-input:focus{border-color:var(--teal-bd)}
+.cmd-input::placeholder{color:var(--text3)}
 
 /* ─── BUTTONS ─── */
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 15px;border-radius:var(--r);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all var(--ease);white-space:nowrap}
@@ -125,9 +124,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:16
 .bar-val{font-family:var(--mono);font-size:10px;color:var(--text3);width:24px;text-align:right}
 .activity-list{display:flex;flex-direction:column;gap:8px;max-height:320px;overflow-y:auto;padding-right:2px}
 .activity-item{background:var(--bg4);border:1px solid var(--border);border-radius:8px;padding:8px 9px}
+.activity-item.new{animation:feedIn 220ms ease}
 .activity-top{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--text3);font-family:var(--mono)}
 .activity-desc{margin-top:4px;font-size:12px;color:var(--text2);line-height:1.45}
 .activity-empty{font-size:11.5px;color:var(--text3)}
+@keyframes feedIn{from{opacity:.25;transform:translateY(-2px)}to{opacity:1;transform:translateY(0)}}
 .column{min-width:240px;width:240px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r3);display:flex;flex-direction:column;max-height:100%;flex-shrink:0}
 .col-head{padding:11px 14px 9px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .col-head-left{display:flex;align-items:center;gap:7px}
@@ -165,6 +166,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:16
 .detail-head{padding:13px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .detail-head-name{font-family:var(--display);font-size:16px;font-weight:600;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .detail-head-name{font-family:var(--display);font-size:18px;font-weight:600;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.detail-head-name{font-family:var(--display);font-size:20px;font-weight:600;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .close-btn{background:none;border:none;color:var(--text3);cursor:pointer;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:4px;transition:all var(--ease);flex-shrink:0}
 .close-btn:hover{background:var(--bg3);color:var(--text2)}
 .detail-body{flex:1;overflow-y:auto;padding:15px;display:flex;flex-direction:column;gap:16px}
@@ -185,6 +187,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:16
 .action-box{background:var(--teal-bg);border:1px solid var(--teal-bd);border-radius:var(--r);padding:10px 12px;font-size:12.5px;color:var(--teal);line-height:1.55}
 .draft-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:12px;min-height:80px;font-size:12.5px;color:var(--text2);line-height:1.75;position:relative}
 .draft-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:12px;min-height:80px;font-size:13.5px;color:var(--text2);line-height:1.75;position:relative}
+.draft-box.flash{animation:draftFlash 260ms ease}
+@keyframes draftFlash{from{border-color:var(--teal);box-shadow:0 0 0 0 #3cc8bc55}to{border-color:var(--border);box-shadow:0 0 0 8px #3cc8bc00}}
 .draft-placeholder{color:var(--text3);font-style:italic;font-size:12px}
 .draft-text{white-space:pre-wrap}
 .draft-gen{display:flex;align-items:center;gap:8px;color:var(--text3);font-size:11px;font-style:italic}
@@ -201,6 +205,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:16
 .chat-empty-title{font-family:var(--display);font-size:19px;font-weight:600;color:var(--text2);margin-bottom:4px}
 .chat-empty-sub{font-size:13px;max-width:320px;line-height:1.7}
 .chat-empty-title{font-family:var(--display);font-size:21px;font-weight:600;color:var(--text2);margin-bottom:4px}
+.chat-empty-title{font-family:var(--display);font-size:24px;font-weight:600;color:var(--text2);margin-bottom:4px}
 .chat-empty-sub{font-size:14px;max-width:360px;line-height:1.75}
 .chips{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-top:14px}
 .chip{background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:8px 14px;font-size:13px;color:var(--text2);cursor:pointer;transition:all var(--ease)}
@@ -211,8 +216,10 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:16
 .msg-row.ai{align-items:flex-start}
 .msg-bubble{max-width:78%;padding:12px 15px;border-radius:10px;font-size:14px;line-height:1.75}
 .msg-bubble{max-width:78%;padding:13px 16px;border-radius:10px;font-size:15.5px;line-height:1.8}
+.msg-bubble{max-width:78%;padding:13px 16px;border-radius:10px;font-size:16px;line-height:1.8}
 .msg-row.user .msg-bubble{background:var(--amber);color:#0c0c0c;font-weight:500;border-radius:10px 10px 2px 10px}
 .msg-row.ai .msg-bubble{background:var(--bg3);border:1px solid var(--border);border-radius:10px 10px 10px 2px}
+.msg-row.ai .msg-bubble{font-size:18px}
 .msg-bubble p{margin:0 0 8px}
 .msg-bubble p:last-child{margin-bottom:0}
 .msg-bubble ul,.msg-bubble ol{padding-left:20px;margin:8px 0}
@@ -315,7 +322,7 @@ textarea.form-input{resize:vertical;min-height:80px;font-family:var(--font);font
   <!-- Chat Sessions -->
   <div class="chat-sessions-area">
     <div class="sessions-head">
-      <div class="sessions-label">Knowledge Chat</div>
+      <div class="sessions-label">Ask Aria</div>
       <button class="new-chat-btn" onclick="newChat()">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         New
@@ -344,19 +351,14 @@ textarea.form-input{resize:vertical;min-height:80px;font-family:var(--font);font
 <!-- MAIN -->
 <div class="main">
   <div class="topbar">
-    <div class="topbar-left">
-      <div class="page-title" id="page-title">Lead Pipeline</div>
-      <div class="status-pill pill-live" id="api-status">● Live</div>
+    <div class="cmd-brand">
+      <div class="cmd-title">Vera</div>
+      <div class="cmd-sub" id="page-title">AI Operating System</div>
     </div>
-    <div class="topbar-right">
-      <button class="btn btn-ghost" onclick="newChat();showView('chat')">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        Ask Knowledge Base
-      </button>
-      <button class="btn btn-primary" onclick="openAddLead()">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Add Lead
-      </button>
+    <div class="cmd-actions">
+      <input class="cmd-input" id="cmd-ask" placeholder="Ask Aria..." onkeydown="if(event.key==='Enter'){event.preventDefault();quickAskAria()}">
+      <button class="btn btn-ghost" onclick="quickAskAria()">Ask Aria</button>
+      <button class="btn btn-primary" onclick="quickUploadDoc()">Upload Doc</button>
     </div>
   </div>
 
@@ -405,7 +407,7 @@ textarea.form-input{resize:vertical;min-height:80px;font-family:var(--font);font
       <div class="chat-messages" id="chat-messages">
         <div class="chat-empty" id="chat-empty">
           <div class="chat-empty-icon">◈</div>
-          <div class="chat-empty-title">Ask your knowledge base</div>
+          <div class="chat-empty-title">Ask Aria</div>
           <div class="chat-empty-sub">Ask naturally. Aria uses uploaded documents when needed, and handles general questions smoothly.</div>
           <div class="chips">
             <div class="chip" onclick="sendChat('What are our standard retainer rates?')">Retainer rates?</div>
@@ -640,8 +642,8 @@ function renderActivityFeed() {
     feed.innerHTML = '<div class="activity-empty">AI actions will appear here in real time.</div>';
     return;
   }
-  feed.innerHTML = activityFeed.map(item => `
-    <div class="activity-item">
+  feed.innerHTML = activityFeed.map((item, idx) => `
+    <div class="activity-item ${idx===0?'new':''}">
       <div class="activity-top"><span>${item.icon}</span><span>${fmtTime(item.timestamp)}</span></div>
       <div class="activity-desc">${escHtml(item.desc)}</div>
     </div>`).join('');
@@ -784,6 +786,8 @@ async function genDraft(id) {
       <div class="draft-text">${escHtml(cleanDraft)}</div>
       ${srcs.length?`<div class="source-row"><span class="src-lbl">Sources:</span>${srcs.map(s=>`<span class="src-tag">${escHtml(s)}</span>`).join('')}</div>`:''}
       ${l.email?`<div class="d-actions"><a class="btn btn-teal btn-sm" href="${mailto}">Send via Gmail</a></div>`:''}`;
+    box.classList.add('flash');
+    setTimeout(()=>box.classList.remove('flash'), 320);
     pushActivity('🧠', `LeadSentinel prepared outreach strategy for ${l.company||l.name}`);
     toast('✓ Draft generated from your knowledge base');
   } catch(e) {
@@ -923,7 +927,7 @@ function clearChatUI() {
   container.innerHTML = `
     <div class="chat-empty" id="chat-empty">
       <div class="chat-empty-icon">◈</div>
-      <div class="chat-empty-title">Ask your knowledge base</div>
+      <div class="chat-empty-title">Ask Aria</div>
       <div class="chat-empty-sub">Ask about docs, leads, or general workflow. Aria uses knowledge base context when relevant.</div>
       <div class="chips">
         <div class="chip" onclick="sendChat('What are our standard retainer rates?')">Retainer rates?</div>
@@ -1069,14 +1073,32 @@ function renderDocs() {
 }
 
 // ── NAVIGATION ────────────────────────────────────────────────────────────────
-const TITLES={pipeline:'Lead Pipeline',chat:'Knowledge Chat',docs:'Documents'};
+const TITLES={pipeline:'Lead Pipeline',chat:'Ask Aria',docs:'Documents'};
 function showView(v){
   document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
   document.getElementById('nav-'+v)?.classList.add('active');
-  document.getElementById('page-title').textContent=TITLES[v]||'Vera';
+  document.getElementById('page-title').textContent='AI Operating System';
   if(v!=='pipeline')closeDetail();
+}
+
+function quickAskAria(){
+  const el = document.getElementById('cmd-ask');
+  const q = (el?.value || '').trim();
+  if(!q){
+    showView('chat');
+    document.getElementById('chat-input')?.focus();
+    return;
+  }
+  if(el) el.value = '';
+  showView('chat');
+  sendChat(q);
+}
+
+function quickUploadDoc(){
+  showView('docs');
+  document.getElementById('file-input')?.click();
 }
 
 // ── SETTINGS ──────────────────────────────────────────────────────────────────

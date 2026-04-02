@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vera</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=Instrument+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0c0c0c;--bg2:#111;--bg3:#181818;--bg4:#1f1f1f;--bg5:#272727;
+  --border:#222;--border2:#2d2d2d;--border3:#383838;
+  --text:#e4e2dd;--text2:#8c8a85;--text3:#4e4c49;
+  --amber:#c8923a;--amber2:#a67626;--amber-bg:#c8923a14;--amber-bd:#c8923a28;
+  --teal:#3cc8bc;--teal-bg:#3cc8bc12;--teal-bd:#3cc8bc28;
+  --coral:#e05c48;--coral-bg:#e05c4812;--coral-bd:#e05c4828;
+  --green:#4ec87a;--green-bg:#4ec87a12;--green-bd:#4ec87a28;
+  --font:'Instrument Sans',sans-serif;
+  --display:'Syne',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+  --r:6px;--r2:10px;--r3:14px;
+  --ease:180ms cubic-bezier(.4,0,.2,1);
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:13px;line-height:1.5;display:flex;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-thumb{background:var(--border3);border-radius:3px}
+
+/* ─── SIDEBAR ─── */
+.sidebar{width:220px;min-width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.logo-area{padding:18px 16px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.logo-lockup{display:flex;align-items:center;gap:10px}
+.logo-mark{width:30px;height:30px;background:var(--amber);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:13px;color:#0c0c0c;flex-shrink:0}
+.logo-text{font-family:var(--display);font-size:16px;font-weight:700;letter-spacing:-.3px}
+.logo-sub{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.6px;text-transform:uppercase;margin-top:1px}
+
+.sidebar-nav{padding:10px 8px 6px;flex-shrink:0}
+.nav-label{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.7px;text-transform:uppercase;padding:8px 8px 4px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:var(--r);cursor:pointer;color:var(--text2);font-size:12.5px;transition:all var(--ease);user-select:none}
+.nav-item:hover{background:var(--bg3);color:var(--text)}
+.nav-item.active{background:var(--amber-bg);color:var(--amber);font-weight:500;border:1px solid var(--amber-bd)}
+.nav-icon{width:14px;height:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:.6}
+.nav-item.active .nav-icon{opacity:1}
+.nav-badge{margin-left:auto;background:var(--amber);color:#0c0c0c;font-family:var(--mono);font-size:9px;font-weight:500;padding:1px 5px;border-radius:8px}
+
+/* ─── CHAT SESSIONS SIDEBAR ─── */
+.chat-sessions-area{flex:1;overflow:hidden;display:flex;flex-direction:column;border-top:1px solid var(--border)}
+.sessions-head{padding:10px 12px 6px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.sessions-label{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.7px;text-transform:uppercase}
+.new-chat-btn{display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:var(--r);background:var(--amber-bg);border:1px solid var(--amber-bd);color:var(--amber);font-size:11px;font-weight:500;cursor:pointer;transition:all var(--ease);font-family:var(--font)}
+.new-chat-btn:hover{background:var(--amber-bd)}
+.sessions-list{flex:1;overflow-y:auto;padding:4px 8px 8px}
+.session-item{display:flex;align-items:center;gap:0;padding:6px 8px;border-radius:var(--r);cursor:pointer;transition:all var(--ease);group:1}
+.session-item:hover{background:var(--bg3)}
+.session-item.active{background:var(--bg4)}
+.session-title{flex:1;font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.session-item.active .session-title{color:var(--text)}
+.session-del{opacity:0;background:none;border:none;color:var(--text3);cursor:pointer;padding:2px 4px;border-radius:3px;font-size:13px;flex-shrink:0;line-height:1;transition:all var(--ease)}
+.session-item:hover .session-del{opacity:1}
+.session-del:hover{color:var(--coral);background:var(--coral-bg)}
+.session-time{font-family:var(--mono);font-size:9px;color:var(--text3);flex-shrink:0;margin-left:4px}
+.sessions-empty{padding:12px 8px;font-size:11.5px;color:var(--text3);text-align:center}
+
+.sidebar-bottom{padding:10px 8px;border-top:1px solid var(--border);flex-shrink:0}
+.cfg-btn{display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:var(--r);cursor:pointer;color:var(--text3);font-size:12px;transition:all var(--ease)}
+.cfg-btn:hover{background:var(--bg3);color:var(--text2)}
+.user-row{display:flex;align-items:center;gap:9px;padding:7px 9px}
+.avatar{width:26px;height:26px;border-radius:50%;background:var(--amber-bg);border:1px solid var(--amber-bd);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:var(--amber);font-weight:500;flex-shrink:0}
+.user-name{font-size:12px;font-weight:500}
+.user-role{font-size:10px;color:var(--text3)}
+
+/* ─── MAIN ─── */
+.main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.topbar{height:52px;padding:0 22px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.topbar-left{display:flex;align-items:center;gap:12px}
+.page-title{font-family:var(--display);font-size:15px;font-weight:600;letter-spacing:-.3px}
+.status-pill{font-family:var(--mono);font-size:9px;padding:3px 8px;border-radius:20px;letter-spacing:.4px;text-transform:uppercase}
+.pill-live{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
+.pill-off{background:var(--coral-bg);color:var(--coral);border:1px solid var(--coral-bd)}
+.topbar-right{display:flex;align-items:center;gap:8px}
+
+/* ─── BUTTONS ─── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--r);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;border:none;transition:all var(--ease);white-space:nowrap}
+.btn-primary{background:var(--amber);color:#0c0c0c}.btn-primary:hover{background:var(--amber2)}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2)}.btn-ghost:hover{border-color:var(--border3);color:var(--text)}
+.btn-teal{background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-bd)}.btn-teal:hover{background:var(--teal-bd)}
+.btn-sm{padding:5px 10px;font-size:11px}
+
+/* ─── VIEWS ─── */
+.view{display:none;flex:1;overflow:hidden;animation:fadeIn 180ms ease}
+.view.active{display:flex;flex-direction:column}
+@keyframes fadeIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+
+/* ─── STATS ─── */
+.stats-row{display:flex;gap:1px;border-bottom:1px solid var(--border);background:var(--border);flex-shrink:0}
+.stat-card{flex:1;background:var(--bg2);padding:14px 18px}
+.stat-label{font-family:var(--mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px}
+.stat-val{font-family:var(--display);font-size:26px;font-weight:700;letter-spacing:-1.5px;margin-top:4px;line-height:1}
+.stat-sub{font-size:11px;color:var(--text2);margin-top:3px}
+
+/* ─── KANBAN ─── */
+.kanban-wrap{flex:1;display:flex;overflow:hidden}
+.kanban-scroll{flex:1;display:flex;gap:12px;padding:16px 20px;overflow-x:auto;overflow-y:hidden;align-items:flex-start}
+.column{min-width:240px;width:240px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r3);display:flex;flex-direction:column;max-height:100%;flex-shrink:0}
+.col-head{padding:11px 14px 9px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.col-head-left{display:flex;align-items:center;gap:7px}
+.col-pip{width:7px;height:7px;border-radius:50%}
+.col-name{font-family:var(--mono);font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.5px}
+.col-count{font-family:var(--mono);font-size:10px;background:var(--bg5);color:var(--text2);padding:2px 6px;border-radius:4px}
+.cards{padding:9px;display:flex;flex-direction:column;gap:7px;overflow-y:auto;flex:1}
+.card-empty{padding:20px 12px;text-align:center;color:var(--text3);font-size:11.5px}
+
+/* ─── LEAD CARD ─── */
+.lead-card{background:var(--bg4);border:1px solid var(--border);border-radius:var(--r2);padding:11px 12px;cursor:pointer;transition:all var(--ease);position:relative;overflow:hidden}
+.lead-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+.lead-card.p3::before{background:var(--coral)}
+.lead-card.p2::before{background:var(--amber)}
+.lead-card.p1::before{background:var(--border3)}
+.lead-card:hover{border-color:var(--border3);background:var(--bg5);transform:translateY(-1px);box-shadow:0 4px 16px #0000002a}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:7px}
+.card-info{flex:1;min-width:0}
+.card-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-company{font-size:11px;color:var(--text2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.score-num{font-family:var(--display);font-size:20px;font-weight:700;line-height:1;letter-spacing:-1px;flex-shrink:0}
+.s-high{color:var(--green)}.s-mid{color:var(--amber)}.s-low{color:var(--coral)}.s-dead{color:var(--text3)}
+.card-msg{font-size:11.5px;color:var(--text2);line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card-action{font-size:10.5px;color:var(--teal);margin-top:7px;line-height:1.4}
+.card-time{font-family:var(--mono);font-size:9.5px;color:var(--text3);margin-top:6px}
+
+/* ─── DETAIL PANEL ─── */
+.detail-panel{width:0;min-width:0;background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:width 240ms cubic-bezier(.4,0,.2,1),min-width 240ms cubic-bezier(.4,0,.2,1);flex-shrink:0}
+.detail-panel.open{width:340px;min-width:340px}
+.detail-head{padding:13px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.detail-head-name{font-family:var(--display);font-size:14px;font-weight:600;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.close-btn{background:none;border:none;color:var(--text3);cursor:pointer;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:4px;transition:all var(--ease);flex-shrink:0}
+.close-btn:hover{background:var(--bg3);color:var(--text2)}
+.detail-body{flex:1;overflow-y:auto;padding:15px;display:flex;flex-direction:column;gap:16px}
+.sec-title{font-family:var(--mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:9px}
+.score-hero{display:flex;align-items:center;gap:13px;padding:13px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2)}
+.score-big{font-family:var(--display);font-size:44px;font-weight:700;letter-spacing:-3px;line-height:1}
+.score-company{font-size:12px;color:var(--text2);margin-bottom:5px}
+.score-priority{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px}
+.pr-high{background:var(--coral-bg);color:var(--coral);border:1px solid var(--coral-bd)}
+.pr-med{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd)}
+.pr-low{background:var(--bg5);color:var(--text2);border:1px solid var(--border2)}
+.field{margin-bottom:9px}
+.fl{font-size:10px;color:var(--text3);margin-bottom:2px}
+.fv{font-size:12.5px;color:var(--text2);line-height:1.55}
+.fv-mono{font-family:var(--mono);font-size:11.5px}
+.action-box{background:var(--teal-bg);border:1px solid var(--teal-bd);border-radius:var(--r);padding:10px 12px;font-size:11.5px;color:var(--teal);line-height:1.55}
+.draft-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:11px;min-height:80px;font-size:11px;color:var(--text2);line-height:1.65;position:relative}
+.draft-placeholder{color:var(--text3);font-style:italic;font-size:11.5px}
+.draft-text{white-space:pre-wrap}
+.draft-gen{display:flex;align-items:center;gap:8px;color:var(--text3);font-size:11px;font-style:italic}
+.d-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+.source-row{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-top:9px;padding-top:9px;border-top:1px solid var(--border)}
+.src-lbl{font-size:10px;color:var(--text3)}
+.src-tag{background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-bd);font-family:var(--mono);font-size:9.5px;padding:2px 6px;border-radius:4px}
+
+/* ─── CHAT ─── */
+.chat-layout{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.chat-messages{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px}
+.chat-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;text-align:center;padding:40px;color:var(--text3)}
+.chat-empty-icon{font-size:28px;margin-bottom:8px;opacity:.35}
+.chat-empty-title{font-family:var(--display);font-size:16px;font-weight:600;color:var(--text2);margin-bottom:4px}
+.chat-empty-sub{font-size:12px;max-width:280px;line-height:1.6}
+.chips{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-top:14px}
+.chip{background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:7px 14px;font-size:12px;color:var(--text2);cursor:pointer;transition:all var(--ease)}
+.chip:hover{border-color:var(--teal-bd);color:var(--teal);background:var(--teal-bg)}
+.msg-row{display:flex;flex-direction:column;gap:5px}
+.msg-row.user{align-items:flex-end}
+.msg-row.ai{align-items:flex-start}
+.msg-bubble{max-width:72%;padding:10px 14px;border-radius:10px;font-size:12.5px;line-height:1.65}
+.msg-row.user .msg-bubble{background:var(--amber);color:#0c0c0c;font-weight:500;border-radius:10px 10px 2px 10px}
+.msg-row.ai .msg-bubble{background:var(--bg3);border:1px solid var(--border);border-radius:10px 10px 10px 2px}
+.msg-sources{display:flex;gap:5px;align-items:center;flex-wrap:wrap;max-width:72%}
+.src-lbl-sm{font-size:10px;color:var(--text3)}
+.chat-foot{padding:14px 24px;border-top:1px solid var(--border);background:var(--bg2);flex-shrink:0}
+.chat-hint{font-family:var(--mono);font-size:9.5px;color:var(--text3);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.hint-dot{width:5px;height:5px;border-radius:50%;background:var(--teal);animation:glow 2s ease-in-out infinite}
+@keyframes glow{0%,100%{opacity:.3}50%{opacity:1}}
+.chat-input-row{display:flex;gap:8px}
+.chat-input{flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);padding:10px 14px;font-family:var(--font);font-size:13px;color:var(--text);outline:none;transition:border-color var(--ease)}
+.chat-input:focus{border-color:var(--teal-bd)}
+.chat-input::placeholder{color:var(--text3)}
+.send-btn{width:38px;height:38px;background:var(--teal);border:none;border-radius:var(--r2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all var(--ease);flex-shrink:0}
+.send-btn:hover{background:#35b0a6}
+
+/* ─── DOCS ─── */
+.docs-wrap{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px}
+.upload-zone{border:1.5px dashed var(--border2);border-radius:var(--r3);padding:36px 24px;text-align:center;cursor:pointer;transition:all var(--ease);background:var(--bg3)}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--amber-bd);background:var(--amber-bg)}
+.upload-icon{font-size:22px;margin-bottom:10px;opacity:.45}
+.upload-title{font-family:var(--display);font-size:14px;font-weight:600;color:var(--text2);margin-bottom:4px}
+.upload-sub{font-size:11.5px;color:var(--text3)}.upload-sub span{color:var(--amber);cursor:pointer}
+.docs-section-title{font-family:var(--mono);font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px}
+.doc-row{display:flex;align-items:center;gap:11px;padding:11px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);transition:all var(--ease)}
+.doc-row:hover{border-color:var(--border2)}
+.doc-icon{width:32px;height:32px;background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--amber);flex-shrink:0;font-family:var(--mono);font-weight:500}
+.doc-info{flex:1;min-width:0}
+.doc-name{font-size:13px;font-weight:500}
+.doc-meta{font-size:10.5px;color:var(--text3);margin-top:1px;font-family:var(--mono)}
+.doc-status{font-family:var(--mono);font-size:9px;padding:3px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.4px;flex-shrink:0}
+.st-done{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
+
+/* ─── MODAL ─── */
+.modal-overlay{position:fixed;inset:0;background:#00000088;display:flex;align-items:center;justify-content:center;z-index:1000;animation:fadeIn 150ms ease}
+.modal-overlay.hidden{display:none}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r3);width:420px;box-shadow:0 24px 64px #00000066}
+.modal-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-family:var(--display);font-size:14px;font-weight:600}
+.modal-body{padding:20px;display:flex;flex-direction:column;gap:12px}
+.modal-foot{padding:13px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-label{font-size:11px;color:var(--text2);font-weight:500}
+.form-input{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);padding:8px 12px;font-family:var(--mono);font-size:12px;color:var(--text);outline:none;transition:border-color var(--ease)}
+.form-input:focus{border-color:var(--amber-bd)}
+.form-hint{font-size:10.5px;color:var(--text3)}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.full-col{grid-column:1/-1}
+textarea.form-input{resize:vertical;min-height:80px;font-family:var(--font);font-size:12.5px}
+
+/* ─── TOAST ─── */
+.toast-area{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:7px;z-index:2000;pointer-events:none}
+.toast{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);padding:9px 14px;font-size:12px;color:var(--text);display:flex;align-items:center;gap:8px;animation:slideUp 220ms ease,fadeOut 300ms ease 2.7s forwards;box-shadow:0 8px 24px #00000044;max-width:290px}
+@keyframes slideUp{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes fadeOut{to{opacity:0;transform:translateY(-3px)}}
+
+/* ─── TYPING ─── */
+.typing span{display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--text2);margin:0 1.5px;animation:tp 1.3s ease-in-out infinite}
+.typing span:nth-child(2){animation-delay:.2s}
+.typing span:nth-child(3){animation-delay:.4s}
+@keyframes tp{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="logo-area">
+    <div class="logo-lockup">
+      <div class="logo-mark">V</div>
+      <div>
+        <div class="logo-text">Vera</div>
+        <div class="logo-sub">Agency Intelligence</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sidebar-nav">
+    <div class="nav-label">Workspace</div>
+    <div class="nav-item active" id="nav-pipeline" onclick="showView('pipeline')">
+      <div class="nav-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="5" height="16" rx="1"/></svg></div>
+      Lead Pipeline
+      <span class="nav-badge" id="nav-badge">—</span>
+    </div>
+    <div class="nav-item" id="nav-docs" onclick="showView('docs')">
+      <div class="nav-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+      Documents
+    </div>
+  </div>
+
+  <!-- Chat Sessions -->
+  <div class="chat-sessions-area">
+    <div class="sessions-head">
+      <div class="sessions-label">Knowledge Chat</div>
+      <button class="new-chat-btn" onclick="newChat()">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New
+      </button>
+    </div>
+    <div class="sessions-list" id="sessions-list">
+      <div class="sessions-empty">Start a conversation</div>
+    </div>
+  </div>
+
+  <div class="sidebar-bottom">
+    <div class="cfg-btn" onclick="openSettings()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 1.41 14.14m-1.41 0A10 10 0 0 1 4.93 4.93m14.14 14.14A10 10 0 0 1 4.93 4.93"/></svg>
+      Configure API
+    </div>
+    <div class="user-row">
+      <div class="avatar">V</div>
+      <div>
+        <div class="user-name" id="agency-name">Your Agency</div>
+        <div class="user-role">Admin</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="page-title" id="page-title">Lead Pipeline</div>
+      <div class="status-pill pill-live" id="api-status">● Live</div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-ghost" onclick="newChat();showView('chat')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Ask Knowledge Base
+      </button>
+      <button class="btn btn-primary" onclick="openAddLead()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Lead
+      </button>
+    </div>
+  </div>
+
+  <!-- Pipeline View -->
+  <div class="view active" id="view-pipeline">
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">Total leads</div><div class="stat-val" id="s-total">—</div><div class="stat-sub">all time</div></div>
+      <div class="stat-card"><div class="stat-label">Avg score</div><div class="stat-val" style="color:var(--amber)" id="s-avg">—</div><div class="stat-sub">across pipeline</div></div>
+      <div class="stat-card"><div class="stat-label">High priority</div><div class="stat-val" style="color:var(--coral)" id="s-hot">—</div><div class="stat-sub">need action today</div></div>
+      <div class="stat-card"><div class="stat-label">Converted</div><div class="stat-val" style="color:var(--green)" id="s-conv">—</div><div class="stat-sub">closed</div></div>
+    </div>
+    <div class="kanban-wrap">
+      <div class="kanban-scroll" id="kanban-board"></div>
+      <div class="detail-panel" id="detail-panel">
+        <div class="detail-head">
+          <div class="detail-head-name" id="detail-name">—</div>
+          <button class="close-btn" onclick="closeDetail()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="detail-body" id="detail-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat View -->
+  <div class="view" id="view-chat">
+    <div class="chat-layout">
+      <div class="chat-messages" id="chat-messages">
+        <div class="chat-empty" id="chat-empty">
+          <div class="chat-empty-icon">◈</div>
+          <div class="chat-empty-title">Ask your knowledge base</div>
+          <div class="chat-empty-sub">Answers grounded in your uploaded documents — pricing, case studies, processes.</div>
+          <div class="chips">
+            <div class="chip" onclick="sendChat('What are our standard retainer rates?')">Retainer rates?</div>
+            <div class="chip" onclick="sendChat('What did we charge for our last brand project?')">Last brand project?</div>
+            <div class="chip" onclick="sendChat('What is our typical website delivery timeline?')">Website timeline?</div>
+            <div class="chip" onclick="sendChat('What services do we offer?')">Our services?</div>
+          </div>
+        </div>
+      </div>
+      <div class="chat-foot">
+        <div class="chat-hint"><div class="hint-dot"></div>Searching across all uploaded knowledge documents</div>
+        <div class="chat-input-row">
+          <input class="chat-input" id="chat-input" placeholder="Ask anything about your agency…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatInput()}">
+          <button class="send-btn" onclick="sendChatInput()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0c0c0c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9z"/></svg></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Docs View -->
+  <div class="view" id="view-docs">
+    <div class="docs-wrap">
+      <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+        <input type="file" id="file-input" accept=".docx,.txt,.md" style="display:none" onchange="handleFile(event)">
+        <div class="upload-icon">⬆</div>
+        <div class="upload-title">Drop a document here</div>
+        <div class="upload-sub">Supports .docx, .txt, .md — or <span>browse files</span></div>
+      </div>
+      <div class="docs-section-title">Indexed Documents</div>
+      <div id="docs-list"><div style="color:var(--text3);font-size:12px;padding:4px 0">No documents yet. Upload your pricing deck, case studies, or service guide to enable Knowledge Chat.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay hidden" id="settings-modal">
+  <div class="modal">
+    <div class="modal-head"><div class="modal-title">Configure API</div><button class="close-btn" onclick="closeSettings()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body">
+      <div class="form-group"><div class="form-label">API Base URL</div><input class="form-input" id="cfg-url" placeholder="https://your-vera-app.railway.app"><div class="form-hint">The URL your Vera backend is deployed to.</div></div>
+      <div class="form-group"><div class="form-label">API Key</div><input class="form-input" id="cfg-key" type="password" placeholder="your-secret-api-key"><div class="form-hint">The API_KEY value from your .env file.</div></div>
+      <div class="form-group"><div class="form-label">Agency Name</div><input class="form-input" id="cfg-name" placeholder="Pinnacle Creative Studio"></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeSettings()">Cancel</button><button class="btn btn-primary" onclick="saveSettings()">Save & Connect</button></div>
+  </div>
+</div>
+
+<!-- Add Lead Modal -->
+<div class="modal-overlay hidden" id="add-lead-modal">
+  <div class="modal">
+    <div class="modal-head"><div class="modal-title">Add Lead</div><button class="close-btn" onclick="closeAddLead()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body">
+      <div class="two-col">
+        <div class="form-group"><div class="form-label">Full Name *</div><input class="form-input" id="l-name" placeholder="Marcus Okonkwo"></div>
+        <div class="form-group"><div class="form-label">Email</div><input class="form-input" id="l-email" placeholder="marcus@company.io"></div>
+        <div class="form-group full-col"><div class="form-label">Company</div><input class="form-input" id="l-company" placeholder="Finova Tech"></div>
+        <div class="form-group full-col"><div class="form-label">Message / Notes *</div><textarea class="form-input" id="l-msg" placeholder="The more detail, the better the AI score…"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeAddLead()">Cancel</button><button class="btn btn-primary" id="submit-btn" onclick="submitLead()">Score & Add</button></div>
+  </div>
+</div>
+
+<div class="toast-area" id="toasts"></div>
+
+<script>
+// ── CONFIG ───────────────────────────────────────────────────────────────────
+let C = {
+  url:  localStorage.getItem('v_url')  || '',
+  key:  localStorage.getItem('v_key')  || '',
+  name: localStorage.getItem('v_name') || 'Your Agency',
+};
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+let leads        = [];
+let sessions     = [];
+let activeSession= null; // {id, title}
+let docs         = JSON.parse(localStorage.getItem('v_docs') || '[]');
+
+// ── BOOT ─────────────────────────────────────────────────────────────────────
+window.onload = () => {
+  document.getElementById('agency-name').textContent = C.name;
+  if (!C.url || !C.key) { openSettings(); return; }
+  loadAll();
+};
+
+async function loadAll() {
+  await Promise.allSettled([loadLeads(), loadSessions()]);
+  renderDocs();
+}
+
+// ── API ───────────────────────────────────────────────────────────────────────
+async function api(path, method='GET', body=null) {
+  if (!C.url || !C.key) throw new Error('Not configured');
+  const opts = { method, headers: { 'Content-Type':'application/json', 'X-API-Key': C.key } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(C.url + path, opts);
+  if (!res.ok) { const e = await res.json().catch(()=>({detail:res.statusText})); throw new Error(e.detail||'API error'); }
+  return res.json();
+}
+async function apiUpload(path, fd) {
+  const res = await fetch(C.url + path, { method:'POST', headers:{'X-API-Key':C.key}, body:fd });
+  if (!res.ok) throw new Error('Upload failed');
+  return res.json();
+}
+
+// ── LEADS ─────────────────────────────────────────────────────────────────────
+async function loadLeads() {
+  try {
+    const [stats, res] = await Promise.all([
+      api('/dashboard/stats'),
+      api('/leads','POST',{page:1,page_size:100}),
+    ]);
+    leads = res.leads || [];
+    renderStats(stats);
+    renderKanban();
+    document.getElementById('nav-badge').textContent = leads.filter(l=>l.status==='new').length;
+    setStatus(true);
+  } catch(e) {
+    setStatus(false);
+    renderKanban();
+    renderStats({});
+  }
+}
+
+function setStatus(ok) {
+  const el = document.getElementById('api-status');
+  el.textContent = ok ? '● Live' : '● Offline';
+  el.className = 'status-pill ' + (ok ? 'pill-live' : 'pill-off');
+}
+
+function renderStats(s) {
+  document.getElementById('s-total').textContent = s.total_leads ?? leads.length ?? '—';
+  const avg = leads.length ? Math.round(leads.reduce((a,l)=>a+(l.score||0),0)/leads.length) : '—';
+  document.getElementById('s-avg').textContent = s.avg_score ? Math.round(s.avg_score) : avg;
+  document.getElementById('s-hot').textContent = leads.filter(l=>l.priority===3).length || '0';
+  document.getElementById('s-conv').textContent = leads.filter(l=>l.status==='converted').length || '0';
+}
+
+const COLS = [
+  {key:'new',      label:'New',       color:'var(--text2)'},
+  {key:'contacted',label:'Contacted', color:'var(--amber)'},
+  {key:'qualified',label:'Qualified', color:'var(--teal)'},
+  {key:'converted',label:'Converted', color:'var(--green)'},
+];
+
+function renderKanban() {
+  const board = document.getElementById('kanban-board');
+  board.innerHTML = COLS.map(col => {
+    const colLeads = leads.filter(l=>l.status===col.key);
+    return `
+      <div class="column">
+        <div class="col-head">
+          <div class="col-head-left">
+            <div class="col-pip" style="background:${col.color}"></div>
+            <div class="col-name" style="color:${col.color}">${col.label}</div>
+          </div>
+          <div class="col-count">${colLeads.length}</div>
+        </div>
+        <div class="cards">
+          ${colLeads.length ? colLeads.map(renderCard).join('') : '<div class="card-empty">No leads here</div>'}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function sc(s){return s>=75?'s-high':s>=45?'s-mid':s>=20?'s-low':'s-dead'}
+function pc(p){return p===3?'p3':p===2?'p2':'p1'}
+function ago(ts){
+  if(!ts)return'';
+  const d=(Date.now()-new Date(ts))/1000;
+  if(d<3600)return Math.floor(d/60)+'m ago';
+  if(d<86400)return Math.floor(d/3600)+'h ago';
+  return Math.floor(d/86400)+'d ago';
+}
+
+function renderCard(l) {
+  const action = l.recommended_action
+    ? `<div class="card-action">⚡ ${l.recommended_action.slice(0,70)}${l.recommended_action.length>70?'…':''}</div>` : '';
+  return `
+    <div class="lead-card ${pc(l.priority)}" onclick="openDetail('${l.id}')">
+      <div class="card-top">
+        <div class="card-info">
+          <div class="card-name">${l.name}</div>
+          <div class="card-company">${l.company||'—'}</div>
+        </div>
+        <div class="score-num ${sc(l.score)}">${Math.round(l.score||0)}</div>
+      </div>
+      <div class="card-msg">${l.notes||'No message.'}</div>
+      ${action}
+      <div class="card-time">${ago(l.created_at)}</div>
+    </div>`;
+}
+
+// ── DETAIL PANEL ──────────────────────────────────────────────────────────────
+async function openDetail(id) {
+  const l = leads.find(x=>x.id===id);
+  if(!l) return;
+  document.getElementById('detail-name').textContent = l.name;
+  document.getElementById('detail-panel').classList.add('open');
+
+  const scCls = sc(l.score);
+  const pLabel = ['','Low priority','Medium priority','High priority'][l.priority]||'Unscored';
+  const pCls   = ['pr-low','pr-low','pr-med','pr-high'][l.priority]||'pr-low';
+
+  document.getElementById('detail-body').innerHTML = `
+    <div>
+      <div class="sec-title">Score & Priority</div>
+      <div class="score-hero">
+        <div class="score-big ${scCls}">${Math.round(l.score||0)}</div>
+        <div>
+          <div class="score-company">${l.company||'No company'}</div>
+          <div class="score-priority ${pCls}">${pLabel}</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="sec-title">Contact</div>
+      <div class="field"><div class="fl">Email</div><div class="fv fv-mono">${l.email||'—'}</div></div>
+      <div class="field"><div class="fl">Message</div><div class="fv">${l.notes||'—'}</div></div>
+      <div class="field"><div class="fl">Added</div><div class="fv fv-mono">${new Date(l.created_at).toLocaleDateString()}</div></div>
+    </div>
+    ${l.recommended_action ? `
+    <div>
+      <div class="sec-title">AI Recommended Action</div>
+      <div class="action-box">⚡ ${l.recommended_action}</div>
+    </div>` : ''}
+    <div>
+      <div class="sec-title">Outreach Engine</div>
+      <div class="draft-box" id="draft-box">
+        <div class="draft-placeholder">Click "Draft email" to generate a personalized first-touch email using your knowledge base and this lead's context.</div>
+      </div>
+      <div class="d-actions">
+        <button class="btn btn-primary btn-sm" onclick="genDraft('${l.id}')">Draft email</button>
+        <button class="btn btn-ghost btn-sm" onclick="moveStage('${l.id}')">Move stage</button>
+        ${l.email?`<button class="btn btn-teal btn-sm" onclick="window.location='mailto:${l.email}'">Open email</button>`:''}
+      </div>
+    </div>`;
+}
+
+function closeDetail() {
+  document.getElementById('detail-panel').classList.remove('open');
+}
+
+async function genDraft(id) {
+  const l = leads.find(x=>x.id===id);
+  if(!l) return;
+  const box = document.getElementById('draft-box');
+  box.innerHTML = `<div class="draft-gen"><div class="typing"><span></span><span></span><span></span></div>Searching knowledge base…</div>`;
+  try {
+    const rag = await api('/query','POST',{
+      question: `Best approach for a client like ${l.company||'this company'} needing: ${l.notes||''}`,
+      top_k: 4,
+    });
+    box.innerHTML = `<div class="draft-gen"><div class="typing"><span></span><span></span><span></span></div>Drafting personalized email…</div>`;
+    const draft = await api('/query','POST',{
+      question: `Write a professional first-touch email to ${l.name} at ${l.company||'their company'} who said: "${l.notes||''}". Use this context from our agency: ${rag.answer}. Keep it under 200 words, end with a clear CTA.`,
+      top_k: 3,
+    });
+    const srcs = rag.sources||[];
+    box.innerHTML = `
+      <div class="draft-text">${draft.answer}</div>
+      ${srcs.length?`<div class="source-row"><span class="src-lbl">Sources:</span>${srcs.map(s=>`<span class="src-tag">${s}</span>`).join('')}</div>`:''}`;
+    toast('✓ Draft generated from your knowledge base');
+  } catch(e) {
+    box.innerHTML = `<div class="draft-placeholder" style="color:var(--coral)">Failed: ${e.message}</div>`;
+  }
+}
+
+async function moveStage(id) {
+  const l = leads.find(x=>x.id===id);
+  if(!l) return;
+  const stages = ['new','contacted','qualified','converted'];
+  const next = stages[(stages.indexOf(l.status)+1) % stages.length];
+  try {
+    await api(`/leads/${id}`,'PATCH',{status:next});
+    l.status = next;
+    renderKanban();
+    renderStats({});
+    toast(`Moved to ${next}`);
+  } catch(e) { toast('Failed: '+e.message,'err'); }
+}
+
+// ── ADD LEAD ─────────────────────────────────────────────────────────────────
+function openAddLead(){document.getElementById('add-lead-modal').classList.remove('hidden');document.getElementById('l-name').focus()}
+function closeAddLead(){
+  document.getElementById('add-lead-modal').classList.add('hidden');
+  ['l-name','l-email','l-company','l-msg'].forEach(id=>document.getElementById(id).value='');
+}
+
+async function submitLead() {
+  const name = document.getElementById('l-name').value.trim();
+  const msg  = document.getElementById('l-msg').value.trim();
+  if(!name||!msg){toast('Name and message are required','err');return}
+
+  const btn = document.getElementById('submit-btn');
+  btn.textContent='Scoring…';btn.disabled=true;
+
+  try {
+    const leadId = crypto.randomUUID();
+    const res = await api('/analyze-lead','POST',{
+      lead_id:leadId, name,
+      email:  document.getElementById('l-email').value.trim(),
+      company:document.getElementById('l-company').value.trim(),
+      message:msg,
+    });
+    const newLead = {
+      id:leadId, name,
+      email:  document.getElementById('l-email').value.trim(),
+      company:document.getElementById('l-company').value.trim(),
+      notes:msg,
+      score: res.scoring.score,
+      priority: res.scoring.priority,
+      recommended_action: res.scoring.recommended_action,
+      status:'new',
+      created_at: new Date().toISOString(),
+    };
+    leads.unshift(newLead);
+    renderKanban();renderStats({});
+    document.getElementById('nav-badge').textContent = leads.filter(l=>l.status==='new').length;
+    closeAddLead();
+    toast(`✓ Scored — ${res.scoring.score}/100`);
+    openDetail(leadId);
+  } catch(e){toast('Failed: '+e.message,'err')}
+  finally{btn.textContent='Score & Add';btn.disabled=false}
+}
+
+// ── CHAT SESSIONS ─────────────────────────────────────────────────────────────
+async function loadSessions() {
+  try {
+    const res = await api('/chat/sessions');
+    sessions = res.sessions || [];
+    renderSessions();
+  } catch(e) { /* offline — silent */ }
+}
+
+function renderSessions() {
+  const list = document.getElementById('sessions-list');
+  if(!sessions.length){
+    list.innerHTML='<div class="sessions-empty">Start a conversation</div>';
+    return;
+  }
+  list.innerHTML = sessions.map(s => `
+    <div class="session-item ${activeSession?.id===s.id?'active':''}" onclick="loadSession('${s.id}','${escHtml(s.title)}')">
+      <div class="session-title">${escHtml(s.title)}</div>
+      <button class="session-del" onclick="delSession(event,'${s.id}')">×</button>
+    </div>`).join('');
+}
+
+function escHtml(s){return(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+async function newChat() {
+  try {
+    const s = await api('/chat/sessions','POST',{title:'New conversation'});
+    sessions.unshift(s);
+    activeSession = s;
+    renderSessions();
+    clearChatUI();
+    showView('chat');
+  } catch(e) {
+    // Offline fallback — use a local session
+    activeSession = {id:'local-'+Date.now(), title:'New conversation'};
+    clearChatUI();
+    showView('chat');
+  }
+}
+
+async function loadSession(id, title) {
+  activeSession = {id, title};
+  renderSessions();
+  clearChatUI();
+  showView('chat');
+  try {
+    const res = await api(`/chat/sessions/${id}/messages`);
+    const msgs = res.messages || [];
+    if(msgs.length){
+      document.getElementById('chat-empty')?.remove();
+      msgs.forEach(m => appendMsg(m.role==='user'?'user':'ai', m.content, m.sources||[]));
+    }
+  } catch(e) { /* silent */ }
+}
+
+async function delSession(e, id) {
+  e.stopPropagation();
+  try { await api(`/chat/sessions/${id}`,'DELETE'); } catch(e){/*silent*/}
+  sessions = sessions.filter(s=>s.id!==id);
+  if(activeSession?.id===id){activeSession=null;clearChatUI()}
+  renderSessions();
+}
+
+function clearChatUI() {
+  const container = document.getElementById('chat-messages');
+  container.innerHTML = `
+    <div class="chat-empty" id="chat-empty">
+      <div class="chat-empty-icon">◈</div>
+      <div class="chat-empty-title">Ask your knowledge base</div>
+      <div class="chat-empty-sub">Answers grounded in your uploaded documents.</div>
+      <div class="chips">
+        <div class="chip" onclick="sendChat('What are our standard retainer rates?')">Retainer rates?</div>
+        <div class="chip" onclick="sendChat('What did we charge for our last brand project?')">Last brand project?</div>
+        <div class="chip" onclick="sendChat('What is our typical website delivery timeline?')">Website timeline?</div>
+        <div class="chip" onclick="sendChat('What services do we offer?')">Our services?</div>
+      </div>
+    </div>`;
+}
+
+// ── KNOWLEDGE CHAT ────────────────────────────────────────────────────────────
+function sendChatInput(){
+  const inp=document.getElementById('chat-input');
+  const q=inp.value.trim();if(!q)return;
+  inp.value='';sendChat(q);
+}
+
+async function sendChat(question) {
+  // If no session, create one first
+  if(!activeSession){
+    try{
+      const s = await api('/chat/sessions','POST',{title:question.slice(0,60)});
+      sessions.unshift(s);activeSession=s;renderSessions();
+    }catch(e){activeSession={id:'local-'+Date.now(),title:question.slice(0,60)}}
+  }
+
+  document.getElementById('chat-empty')?.remove();
+  const container = document.getElementById('chat-messages');
+
+  appendMsg('user', question, []);
+  const typId='tp-'+Date.now();
+  container.innerHTML += `<div class="msg-row ai" id="${typId}"><div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div></div>`;
+  container.scrollTop=container.scrollHeight;
+
+  try {
+    const res = await api('/query','POST',{
+      question,
+      top_k:5,
+      session_id: activeSession.id,
+    });
+    document.getElementById(typId)?.remove();
+    appendMsg('ai', res.answer, res.sources||[]);
+
+    // Update session title from first message
+    if(activeSession && sessions.find(s=>s.id===activeSession.id)?.title==='New conversation'){
+      const s = sessions.find(s=>s.id===activeSession.id);
+      if(s){s.title=question.slice(0,60);renderSessions()}
+    }
+  } catch(e) {
+    document.getElementById(typId)?.remove();
+    appendMsg('ai', e.message==='Not configured'?'Please configure your API key in Settings first.':'Error: '+e.message, []);
+  }
+  container.scrollTop=container.scrollHeight;
+}
+
+function appendMsg(role, content, sources) {
+  const container = document.getElementById('chat-messages');
+  const srcsHtml = sources.length
+    ? `<div class="msg-sources"><span class="src-lbl-sm">Sources:</span>${sources.map(s=>`<span class="src-tag">${s}</span>`).join('')}</div>`
+    : '';
+  container.innerHTML += `
+    <div class="msg-row ${role}">
+      <div class="msg-bubble">${content}</div>
+      ${role==='ai'?srcsHtml:''}
+    </div>`;
+}
+
+// ── DOCUMENTS ─────────────────────────────────────────────────────────────────
+function handleDragOver(e){e.preventDefault();document.getElementById('upload-zone').classList.add('drag-over')}
+function handleDragLeave(){document.getElementById('upload-zone').classList.remove('drag-over')}
+function handleDrop(e){e.preventDefault();document.getElementById('upload-zone').classList.remove('drag-over');const f=e.dataTransfer.files[0];if(f)uploadFile(f)}
+function handleFile(e){const f=e.target.files[0];if(f)uploadFile(f)}
+
+async function uploadFile(file) {
+  const ext='.'+file.name.split('.').pop().toLowerCase();
+  if(!['.docx','.txt','.md'].includes(ext)){toast('Only .docx, .txt, .md supported','err');return}
+  toast('⬆ Uploading and indexing…');
+  try {
+    const fd=new FormData();fd.append('file',file);
+    const res=await apiUpload('/upload',fd);
+    const doc={id:res.document_id,name:file.name,chunks:res.chunks_stored,size:(file.size/1024).toFixed(1)+' KB',date:new Date().toLocaleDateString()};
+    docs.unshift(doc);
+    localStorage.setItem('v_docs',JSON.stringify(docs));
+    renderDocs();
+    toast(`✓ Indexed — ${res.chunks_stored} chunks stored`);
+  } catch(e){toast('Upload failed: '+e.message,'err')}
+}
+
+function renderDocs() {
+  const list=document.getElementById('docs-list');
+  if(!list)return;
+  if(!docs.length){list.innerHTML='<div style="color:var(--text3);font-size:12px;padding:4px 0">No documents yet.</div>';return}
+  list.innerHTML=docs.map(d=>`
+    <div class="doc-row">
+      <div class="doc-icon">${d.name.split('.').pop().toUpperCase()}</div>
+      <div class="doc-info"><div class="doc-name">${d.name}</div><div class="doc-meta">${d.chunks} chunks · ${d.size} · ${d.date}</div></div>
+      <div class="doc-status st-done">Indexed</div>
+    </div>`).join('');
+}
+
+// ── NAVIGATION ────────────────────────────────────────────────────────────────
+const TITLES={pipeline:'Lead Pipeline',chat:'Knowledge Chat',docs:'Documents'};
+function showView(v){
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  document.getElementById('nav-'+v)?.classList.add('active');
+  document.getElementById('page-title').textContent=TITLES[v]||'Vera';
+  if(v!=='pipeline')closeDetail();
+}
+
+// ── SETTINGS ──────────────────────────────────────────────────────────────────
+function openSettings(){
+  document.getElementById('cfg-url').value=C.url;
+  document.getElementById('cfg-key').value=C.key;
+  document.getElementById('cfg-name').value=C.name;
+  document.getElementById('settings-modal').classList.remove('hidden');
+}
+function closeSettings(){document.getElementById('settings-modal').classList.add('hidden')}
+function saveSettings(){
+  C.url=(document.getElementById('cfg-url').value.trim()).replace(/\/$/,'');
+  C.key=document.getElementById('cfg-key').value.trim();
+  C.name=document.getElementById('cfg-name').value.trim()||'Your Agency';
+  localStorage.setItem('v_url',C.url);
+  localStorage.setItem('v_key',C.key);
+  localStorage.setItem('v_name',C.name);
+  document.getElementById('agency-name').textContent=C.name;
+  closeSettings();
+  toast('Saved — connecting…');
+  loadAll();
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function toast(msg,type='ok'){
+  const area=document.getElementById('toasts');
+  const dot=type==='err'?'🔴':'✓';
+  const el=document.createElement('div');
+  el.className='toast';
+  el.innerHTML=`<span>${dot}</span><span>${msg}</span>`;
+  area.appendChild(el);
+  setTimeout(()=>el.remove(),3300);
+}
+
+// ── SHORTCUTS ─────────────────────────────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){closeDetail();closeSettings();closeAddLead()}
+  if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();newChat();document.getElementById('chat-input').focus()}
+});
+</script>
+</body>
+</html>

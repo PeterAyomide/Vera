@@ -257,6 +257,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:17
 .doc-meta{font-size:10.5px;color:var(--text3);margin-top:1px;font-family:var(--mono)}
 .doc-status{font-family:var(--mono);font-size:9px;padding:3px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.4px;flex-shrink:0}
 .st-done{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
+.doc-remove{background:none;border:1px solid var(--coral-bd);color:var(--coral);font-family:var(--mono);font-size:9px;padding:4px 7px;border-radius:6px;cursor:pointer;flex-shrink:0;transition:all var(--ease)}
+.doc-remove:hover{background:var(--coral-bg)}
 
 /* ─── MODAL ─── */
 .modal-overlay{position:fixed;inset:0;background:#00000088;display:flex;align-items:center;justify-content:center;z-index:1000;animation:fadeIn 150ms ease}
@@ -962,6 +964,15 @@ function sendChatInput(){
   inp.value='';sendChat(q);
 }
 
+function normalizeAgencyQuestion(question) {
+  const q = String(question || '');
+  const agency = (C.name || '').trim();
+  if (!agency || agency.toLowerCase() === 'your agency') return q;
+  return q
+    .replace(/\bthis agency\b/gi, agency)
+    .replace(/\bour agency\b/gi, agency);
+}
+
 async function sendChat(question) {
   // If no session, create one first
   if(!activeSession){
@@ -981,8 +992,9 @@ async function sendChat(question) {
 
   try {
     pushActivity('📚', 'CorporateBrain searched knowledge base and conversation context');
+    const queryForApi = normalizeAgencyQuestion(question);
     const res = await api('/query','POST',{
-      question,
+      question: queryForApi,
       top_k:5,
       session_id: activeSession.id,
     });
@@ -1077,6 +1089,21 @@ async function uploadFile(file) {
   } catch(e){toast('Upload failed: '+e.message,'err')}
 }
 
+async function removeDoc(id) {
+  const doc = docs.find(d=>d.id===id);
+  if(!doc) return;
+  try {
+    await api(`/documents/${id}`,'DELETE');
+    docs = docs.filter(d=>d.id!==id);
+    localStorage.setItem('v_docs',JSON.stringify(docs));
+    renderDocs();
+    pushActivity('🗑', `CorporateBrain removed ${doc.name}`);
+    toast(`Removed ${doc.name}`);
+  } catch(e) {
+    toast('Delete failed: '+e.message,'err');
+  }
+}
+
 function renderDocs() {
   const list=document.getElementById('docs-list');
   if(!list)return;
@@ -1086,6 +1113,7 @@ function renderDocs() {
       <div class="doc-icon">${d.name.split('.').pop().toUpperCase()}</div>
       <div class="doc-info"><div class="doc-name">${d.name}</div><div class="doc-meta">${d.chunks} chunks · ${d.size} · ${d.date}</div></div>
       <div class="doc-status st-done">Indexed</div>
+      <button class="doc-remove" onclick="removeDoc('${d.id}')">Remove</button>
     </div>`).join('');
 }
 

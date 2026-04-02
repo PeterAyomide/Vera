@@ -43,6 +43,7 @@ from services.chat_service import (
     create_session, list_sessions, delete_session,
     save_message, load_messages, update_session_title,
 )
+from services.db import supabase
 
 # ── Pydantic models ───────────────────────────────────────────────────────────
 
@@ -200,6 +201,29 @@ async def upload(
     except Exception as e:
         logger.exception("Ingest failed: %s", file.filename)
         raise HTTPException(500, "Ingestion failed.") from e
+
+
+@app.delete("/documents/{document_id}")
+async def delete_document(
+    document_id: str,
+    _key: str = Depends(require_api_key),
+):
+    """Delete an indexed document and its chunks."""
+    try:
+        result = (
+            supabase.table("documents")
+            .delete()
+            .eq("id", document_id)
+            .execute()
+        )
+        if not result.data:
+            raise HTTPException(404, "Document not found.")
+        return {"deleted": True, "document_id": document_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Document delete failed: %s", document_id)
+        raise HTTPException(500, "Document deletion failed.") from e
 
 # ─── CorporateBrain: RAG Query ────────────────────────────────────────────────
 

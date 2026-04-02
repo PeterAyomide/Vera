@@ -21,10 +21,11 @@ from typing import List
 
 import httpx
 from docx import Document as DocxDocument
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from openai import AsyncOpenAI
+from pypdf import PdfReader
 
-from core_engine.services.db import supabase
+from services.db import supabase
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,15 @@ def _extract_text_docx(docx_bytes: bytes) -> str:
 
 def _extract_text_plain(raw: bytes) -> str:
     return raw.decode("utf-8", errors="replace")
+
+
+def _extract_text_pdf(pdf_bytes: bytes) -> str:
+    """Extract text from a PDF using pypdf."""
+    reader = PdfReader(io.BytesIO(pdf_bytes))
+    pages = []
+    for page in reader.pages:
+        pages.append((page.extract_text() or "").strip())
+    return "\n\n".join(p for p in pages if p)
 
 
 # ── Smart chunking ───────────────────────────────────────────────────────────
@@ -178,7 +188,12 @@ async def ingest_document(
     raw_bytes = await _download_file(file_url)
 
     ext = os.path.splitext(file_url)[1].lower() or ".docx"
-    text = _extract_text_docx(raw_bytes) if ext == ".docx" else _extract_text_plain(raw_bytes)
+    if ext == ".docx":
+        text = _extract_text_docx(raw_bytes)
+    elif ext == ".pdf":
+        text = _extract_text_pdf(raw_bytes)
+    else:
+        text = _extract_text_plain(raw_bytes)
 
     if not text.strip():
         raise ValueError(f"Document {document_id} contains no extractable text.")
@@ -221,6 +236,8 @@ async def ingest_document_from_bytes(
 
     if ext == ".docx":
         text = _extract_text_docx(file_bytes)
+    elif ext == ".pdf":
+        text = _extract_text_pdf(file_bytes)
     elif ext in (".txt", ".md"):
         text = _extract_text_plain(file_bytes)
     else:
@@ -237,6 +254,7 @@ async def ingest_document_from_bytes(
             ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             ".txt": "text/plain",
             ".md": "text/markdown",
+            ".pdf": "application/pdf",
         }.get(ext, "application/octet-stream"),
         "file_size": len(file_bytes),
     }

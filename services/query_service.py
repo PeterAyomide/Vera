@@ -22,7 +22,7 @@ from typing import Dict, List, Optional
 
 from openai import AsyncOpenAI
 
-from core_engine.services.db import supabase
+from services.db import supabase
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +42,17 @@ SIMILARITY_THRESHOLD = 0.3
 # Sessions are capped to MAX_HISTORY turns per session.
 _session_history: Dict[str, List[dict]] = {}
 MAX_HISTORY_TURNS = 6   # 3 user + 3 assistant messages
+
+GENERAL_CHAT_KEYWORDS = {
+    "hello", "hi", "hey", "help", "what can you do", "how does", "summarize",
+    "pipeline", "lead", "leads", "system", "vera", "chat", "email", "outreach",
+}
+
+RAG_INTENT_KEYWORDS = {
+    "document", "documents", "knowledge base", "kb", "policy", "playbook", "pdf",
+    "file", "files", "uploaded", "upload", "source", "sources", "pricing", "retainer",
+    "case study", "proposal", "contract", "scope", "timeline", "reference", "cite",
+}
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -182,6 +193,49 @@ def _push_history(session_id: str, role: str, content: str) -> None:
         _session_history[session_id] = history[-(MAX_HISTORY_TURNS * 2):]
 
 
+def _looks_general_chat(question: str) -> bool:
+    q = question.strip().lower()
+    if not q:
+        return True
+
+    if any(k in q for k in RAG_INTENT_KEYWORDS):
+        return False
+
+    if len(q.split()) <= 3:
+        return True
+
+    # Natural, broad assistant asks should stay conversational.
+    if q.startswith(("what can", "how do", "can you", "help me", "explain")):
+        return True
+
+    return any(k in q for k in GENERAL_CHAT_KEYWORDS)
+
+
+async def _answer_general_chat(question: str, session_id: Optional[str] = None) -> str:
+    """Respond as a helpful assistant when retrieval is not needed."""
+    messages: List[dict] = [
+        {
+            "role": "system",
+            "content": (
+                "You are Aria, a helpful AI assistant for agency teams. "
+                "Respond clearly and conversationally. "
+                "Do not mention missing database knowledge unless explicitly asked "
+                "for a factual detail from uploaded documents."
+            ),
+        }
+    ]
+    if session_id:
+        messages.extend(_get_history(session_id))
+    messages.append({"role": "user", "content": question})
+
+    completion = await _openai.chat.completions.create(
+        model=CHAT_MODEL,
+        temperature=0.4,
+        messages=messages,
+    )
+    return completion.choices[0].message.content or ""
+
+
 # ── System prompt – Aria identity ─────────────────────────────────────────────
 
 _SYSTEM_PROMPT = """\
@@ -189,9 +243,8 @@ You are **Aria**, the AI knowledge assistant and digital brain of a forward-thin
 You are knowledgeable, professional, and slightly personable — like a highly capable senior \
 analyst who genuinely cares about getting the right answer.
 
-Your role is to answer questions using ONLY the company knowledge base provided below. \
-You do not make things up. If the context contains the answer, you deliver it clearly and directly. \
-If it does not, you say so honestly.
+You are answering using company knowledge context provided below. \
+Use that context as your source of truth for factual claims.
 
 Core rules:
 1. Answer directly and concisely. No filler phrases like "Great question!" or "Certainly!".
@@ -199,7 +252,7 @@ Core rules:
 3. Numbers, prices, metrics, and dates in the context are facts — cite them precisely.
 4. Synthesise across multiple documents when the answer spans sources.
 5. Only say you cannot find information when it is genuinely absent from ALL provided context.
-6. Always cite which [Document] your answer comes from, at the end of your response.
+6. Do not add a "Sources" section or bracket citations in the answer body.
 7. If a previous conversation turn is relevant to this question, reference it naturally \
    (e.g., "As I mentioned earlier…").
 8. Keep responses structured — use bullet points or numbered lists where they improve clarity.
@@ -227,6 +280,15 @@ async def query_knowledge(
     """
     logger.info("Query (session=%s): %.80s…", session_id, question)
 
+    # 0. General conversational mode for non-document questions.
+    # This makes chat feel intelligent even when no KB lookup is needed.
+    if _looks_general_chat(question):
+        answer = await _answer_general_chat(question, session_id=session_id)
+        if session_id:
+            _push_history(session_id, "user", question)
+            _push_history(session_id, "assistant", answer)
+        return {"answer": answer, "sources": []}
+
     # 1. Expand query
     queries = await _expand_query(question)
     logger.info("Running %d query variants", len(queries))
@@ -247,11 +309,7 @@ async def query_knowledge(
     chunks = await _rerank_chunks(question, chunks, top_k=top_k)
 
     if not chunks:
-        answer = (
-            "I searched the knowledge base but couldn't find any information relevant to "
-            "your question. If this topic should be documented, please ask an admin to "
-            "upload the relevant document."
-        )
+        answer = await _answer_general_chat(question, session_id=session_id)
         if session_id:
             _push_history(session_id, "user", question)
             _push_history(session_id, "assistant", answer)

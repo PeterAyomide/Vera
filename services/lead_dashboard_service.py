@@ -13,7 +13,7 @@ from typing import List
 
 from openai import AsyncOpenAI
 
-from core_engine.services.db import supabase
+from services.db import supabase
 
 logger = logging.getLogger(__name__)
 
@@ -235,7 +235,7 @@ async def bulk_score_leads(
 ) -> dict:
     """Score all unscored (score=0 or NULL) leads using asyncio.gather."""
     import asyncio
-    from core_engine.services.lead_service import analyze_lead
+    from services.lead_service import analyze_lead
 
     q = supabase.table("leads").select("id, name, email, company, notes, message, user_id")
     if user_id:

@@ -170,7 +170,7 @@ async def serve_embed():
 
 # ─── CorporateBrain: Upload & Ingest ──────────────────────────────────────────
 
-ALLOWED_EXTS = {".docx", ".txt", ".md"}
+ALLOWED_EXTS = {".docx", ".txt", ".md", ".pdf"}
 
 @app.post("/upload")
 async def upload(

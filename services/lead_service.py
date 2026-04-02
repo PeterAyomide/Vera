@@ -10,9 +10,15 @@ import logging
 import os
 
 from openai import AsyncOpenAI
+from pydantic import BaseModel
 
-from core_engine.models import LeadScore
-from core_engine.services.db import supabase
+from services.db import supabase
+
+
+class LeadScore(BaseModel):
+  score: int
+  priority: int
+  recommended_action: str
 
 logger = logging.getLogger(__name__)
 

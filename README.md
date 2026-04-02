@@ -1,0 +1,2 @@
+# Vera
+AI Agency Copilot

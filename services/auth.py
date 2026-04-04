@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 # ── API Key ──────────────────────────────────────────────────────────────────
 
-API_KEY: str = os.environ.get("AGENCYOS_API_KEY", "")
+API_KEY: str = os.environ.get("API_KEY", "")
 
 _api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
@@ -38,7 +38,7 @@ async def require_api_key(
     """
     if not API_KEY:
         # If no key is configured, allow all requests (dev mode)
-        logger.warning("AGENCYOS_API_KEY not set – auth is DISABLED (dev mode)")
+        logger.warning("API_KEY not set – auth is DISABLED (dev mode)")
         return "dev-mode"
 
     if not api_key:

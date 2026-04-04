@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from datetime import datetime, timedelta, timezone
 from typing import List
 
 from openai import AsyncOpenAI
@@ -155,6 +156,173 @@ def get_dashboard_stats(user_id: str | None = None) -> dict:
         "hot_leads": len([s for s in scores if s >= 70]),
         "warm_leads": len([s for s in scores if 40 <= s < 70]),
         "cold_leads": len([s for s in scores if s < 40]),
+    }
+
+
+def _parse_iso(ts: str | None) -> datetime | None:
+    if not ts:
+        return None
+    try:
+        return datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def get_dashboard_trends(days: int = 30, user_id: str | None = None) -> dict:
+    """Return daily trend data for lead creation, conversion, and avg score."""
+    days = max(7, min(days, 90))
+
+    query = supabase.table("leads").select(
+        "id, status, score, created_at, updated_at"
+    )
+    if user_id:
+        query = query.eq("user_id", user_id)
+
+    result = query.execute()
+    leads = result.data or []
+
+    today = datetime.now(timezone.utc).date()
+    start = today - timedelta(days=days - 1)
+
+    daily = {}
+    for i in range(days):
+        d = start + timedelta(days=i)
+        key = d.isoformat()
+        daily[key] = {
+            "date": key,
+            "created": 0,
+            "converted": 0,
+            "score_sum": 0.0,
+            "score_count": 0,
+        }
+
+    for lead in leads:
+        created_dt = _parse_iso(lead.get("created_at"))
+        if created_dt:
+            created_key = created_dt.date().isoformat()
+            if created_key in daily:
+                daily[created_key]["created"] += 1
+                score = lead.get("score")
+                if score is not None:
+                    daily[created_key]["score_sum"] += float(score)
+                    daily[created_key]["score_count"] += 1
+
+        if lead.get("status") == "converted":
+            converted_dt = _parse_iso(lead.get("updated_at")) or created_dt
+            if converted_dt:
+                converted_key = converted_dt.date().isoformat()
+                if converted_key in daily:
+                    daily[converted_key]["converted"] += 1
+
+    rows = []
+    created_total = 0
+    converted_total = 0
+    score_total = 0.0
+    score_count = 0
+    for key in sorted(daily.keys()):
+        item = daily[key]
+        avg_score = (
+            round(item["score_sum"] / item["score_count"], 1)
+            if item["score_count"]
+            else 0
+        )
+        rows.append(
+            {
+                "date": item["date"],
+                "created": item["created"],
+                "converted": item["converted"],
+                "avg_score": avg_score,
+            }
+        )
+        created_total += item["created"]
+        converted_total += item["converted"]
+        score_total += item["score_sum"]
+        score_count += item["score_count"]
+
+    return {
+        "days": days,
+        "summary": {
+            "created": created_total,
+            "converted": converted_total,
+            "conversion_rate": round((converted_total / created_total) * 100, 1)
+            if created_total
+            else 0,
+            "average_score": round(score_total / score_count, 1) if score_count else 0,
+        },
+        "daily": rows,
+    }
+
+
+def get_at_risk_leads(limit: int = 5, user_id: str | None = None) -> dict:
+    """Return leads that need immediate follow-up based on priority and inactivity."""
+    limit = max(1, min(limit, 20))
+
+    query = supabase.table("leads").select(
+        "id, name, company, score, priority, status, "
+        "last_contacted_at, created_at"
+    )
+    if user_id:
+        query = query.eq("user_id", user_id)
+
+    result = query.execute()
+    leads = result.data or []
+
+    now = datetime.now(timezone.utc)
+    risk_items = []
+
+    for lead in leads:
+        status = lead.get("status")
+        if status in {"converted", "lost"}:
+            continue
+
+        created_dt = _parse_iso(lead.get("created_at"))
+        last_contacted_dt = _parse_iso(lead.get("last_contacted_at")) or created_dt
+        if not last_contacted_dt:
+            continue
+
+        age_hours = (now - last_contacted_dt).total_seconds() / 3600
+        reasons = []
+        risk_score = 0
+
+        priority = int(lead.get("priority") or 0)
+        lead_score = float(lead.get("score") or 0)
+
+        if priority >= 3 and age_hours >= 24:
+            reasons.append("High priority with no contact in 24h")
+            risk_score += 65
+
+        if status == "qualified" and age_hours >= 72:
+            reasons.append("Qualified lead inactive for 3 days")
+            risk_score += 45
+
+        if lead_score >= 75 and age_hours >= 48:
+            reasons.append("High scoring lead waiting for follow-up")
+            risk_score += 30
+
+        if not reasons:
+            continue
+
+        risk_items.append(
+            {
+                "id": lead.get("id"),
+                "name": lead.get("name") or "Unknown",
+                "company": lead.get("company") or "—",
+                "status": status,
+                "priority": priority,
+                "score": round(lead_score),
+                "hours_since_contact": int(age_hours),
+                "risk_score": risk_score,
+                "reasons": reasons,
+            }
+        )
+
+    risk_items.sort(
+        key=lambda x: (x["risk_score"], x["priority"], x["score"]), reverse=True
+    )
+
+    return {
+        "count": len(risk_items),
+        "leads": risk_items[:limit],
     }
 
 

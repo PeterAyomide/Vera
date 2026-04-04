@@ -37,6 +37,7 @@ from services.query_service import query_knowledge
 from services.lead_service import analyze_lead
 from services.lead_dashboard_service import (
     list_leads, get_lead, update_lead, get_dashboard_stats,
+    get_dashboard_trends, get_at_risk_leads,
 )
 from services.auth import require_api_key, sanitize_search_input
 from services.chat_service import (
@@ -362,4 +363,30 @@ async def stats(
         return get_dashboard_stats(user_id=user_id)
     except Exception as e:
         logger.exception("Stats failed")
+        raise HTTPException(500, "Failed.") from e
+
+
+@app.get("/dashboard/trends")
+async def trends(
+    days: int = 30,
+    user_id: Optional[str] = None,
+    _key: str = Depends(require_api_key),
+):
+    try:
+        return get_dashboard_trends(days=days, user_id=user_id)
+    except Exception as e:
+        logger.exception("Trend stats failed")
+        raise HTTPException(500, "Failed.") from e
+
+
+@app.get("/dashboard/at-risk")
+async def at_risk(
+    limit: int = 5,
+    user_id: Optional[str] = None,
+    _key: str = Depends(require_api_key),
+):
+    try:
+        return get_at_risk_leads(limit=limit, user_id=user_id)
+    except Exception as e:
+        logger.exception("At-risk leads failed")
         raise HTTPException(500, "Failed.") from e

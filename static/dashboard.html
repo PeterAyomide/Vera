@@ -377,6 +377,7 @@ textarea.form-input{resize:vertical;min-height:80px;font-family:var(--font);font
     <div class="cmd-actions">
       <input class="cmd-input" id="cmd-ask" placeholder="Ask Aria..." onkeydown="if(event.key==='Enter'){event.preventDefault();quickAskAria()}">
       <button class="btn btn-ghost" onclick="quickAskAria()">Ask Aria</button>
+      <button class="btn btn-teal" id="quick-add-lead" onclick="openAddLead()">Add Lead</button>
       <button class="btn btn-primary" onclick="quickUploadDoc()">Upload Doc</button>
     </div>
   </div>
@@ -1124,6 +1125,8 @@ function showView(v){
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
   document.getElementById('nav-'+v)?.classList.add('active');
+  const addLeadBtn = document.getElementById('quick-add-lead');
+  if (addLeadBtn) addLeadBtn.style.display = v === 'pipeline' ? 'inline-flex' : 'none';
   document.getElementById('page-title').textContent='AI Operating System';
   if(v!=='pipeline')closeDetail();
 }

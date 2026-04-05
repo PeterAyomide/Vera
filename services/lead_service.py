@@ -103,14 +103,26 @@ async def analyze_lead(
     data = json.loads(raw)  # type: ignore[arg-type]
     scoring = LeadScore(**data)
 
-    # Persist to Supabase
-    supabase.table("leads").update(
-        {
-            "score": scoring.score,
-            "priority": scoring.priority,
-            "recommended_action": scoring.recommended_action,
-        }
-    ).eq("id", lead_id).execute()
+    # Persist to Supabase. Use upsert so brand-new leads are created,
+    # while existing leads with the same id are updated in place.
+    supabase.table("leads").upsert(
+      {
+        "id": lead_id,
+        "name": name,
+        "email": email or None,
+        "company": company or None,
+        "notes": message,
+        "status": "new",
+        "source": "website",
+        "score": scoring.score,
+        "priority": scoring.priority,
+        "recommended_action": scoring.recommended_action,
+        "metadata": {
+          "status_history": ["new"],
+        },
+      },
+      on_conflict="id",
+    ).execute()
 
     logger.info(
         "Lead %s scored: %d (%s) – %s",

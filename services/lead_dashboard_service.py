@@ -24,6 +24,32 @@ _openai = AsyncOpenAI(
 )
 
 
+_PIPELINE_STAGES = ["new", "contacted", "qualified", "converted"]
+
+
+def _infer_stage_path(status: str | None) -> list[str]:
+    status = (status or "new").lower()
+    if status == "new":
+        return ["new"]
+    if status == "contacted":
+        return ["new", "contacted"]
+    if status == "qualified":
+        return ["new", "contacted", "qualified"]
+    if status == "converted":
+        return ["new", "contacted", "qualified", "converted"]
+    return ["new"]
+
+
+def _extract_stage_history(lead: dict) -> list[str]:
+    metadata = lead.get("metadata") or {}
+    history = metadata.get("status_history")
+    if isinstance(history, list):
+        cleaned = [str(s).lower() for s in history if str(s).lower() in (_PIPELINE_STAGES + ["lost"])]
+        if cleaned:
+            return cleaned
+    return _infer_stage_path(lead.get("status"))
+
+
 # ── List / Filter Leads ─────────────────────────────────────────────────────
 
 def list_leads(
@@ -98,6 +124,40 @@ def get_lead(lead_id: str) -> dict | None:
 
 def update_lead(lead_id: str, updates: dict) -> dict:
     """Update lead fields (status, notes, etc.)."""
+    current = get_lead(lead_id)
+    if not current:
+        return {}
+
+    if "status" in updates:
+        next_status = str(updates["status"]).lower()
+        prev_status = str(current.get("status") or "new").lower()
+
+        metadata = current.get("metadata") or {}
+        if not isinstance(metadata, dict):
+            metadata = {}
+
+        history = metadata.get("status_history")
+        if not isinstance(history, list):
+            history = _infer_stage_path(prev_status)
+        else:
+            history = [str(s).lower() for s in history]
+
+        if not history:
+            history = _infer_stage_path(prev_status)
+
+        if not history or history[-1] != next_status:
+            history.append(next_status)
+
+        metadata["status_history"] = history
+        # Persist the first moment a lead becomes converted so trend charts
+        # are not distorted by later unrelated updates to updated_at.
+        if next_status == "converted" and prev_status != "converted":
+            metadata.setdefault("converted_at", datetime.now(timezone.utc).isoformat())
+        if next_status == "lost" and prev_status in _PIPELINE_STAGES:
+            metadata["lost_from_stage"] = prev_status
+
+        updates["metadata"] = metadata
+
     result = (
         supabase.table("leads")
         .update(updates)
@@ -113,7 +173,7 @@ def get_dashboard_stats(user_id: str | None = None) -> dict:
     """Get aggregate stats for the dashboard."""
 
     query = supabase.table("leads").select(
-        "id, score, priority, status, created_at", count="exact"
+        "id, score, priority, status, metadata, created_at", count="exact"
     )
     if user_id:
         query = query.eq("user_id", user_id)
@@ -141,11 +201,30 @@ def get_dashboard_stats(user_id: str | None = None) -> dict:
     converted = status_counts.get("converted", 0)
     conversion_rate = round((converted / total) * 100, 1) if total > 0 else 0
 
+    reached_counts = {stage: 0 for stage in _PIPELINE_STAGES}
+    for lead in leads:
+        reached = set(_extract_stage_history(lead))
+        for stage in _PIPELINE_STAGES:
+            if stage in reached:
+                reached_counts[stage] += 1
+
+    contacted_rate = round((reached_counts["contacted"] / reached_counts["new"]) * 100, 1) if reached_counts["new"] else 0
+    qualified_rate = round((reached_counts["qualified"] / reached_counts["contacted"]) * 100, 1) if reached_counts["contacted"] else 0
+    converted_rate = round((reached_counts["converted"] / reached_counts["qualified"]) * 100, 1) if reached_counts["qualified"] else 0
+
     return {
         "total_leads": total,
         "average_score": avg_score,
         "highest_score": high_score,
         "conversion_rate": conversion_rate,
+        "funnel": {
+            "reached": reached_counts,
+            "rates": {
+                "contacted_from_new": contacted_rate,
+                "qualified_from_contacted": qualified_rate,
+                "converted_from_qualified": converted_rate,
+            },
+        },
         "by_status": status_counts,
         "by_priority": {
             "none": priority_counts[0],
@@ -173,7 +252,7 @@ def get_dashboard_trends(days: int = 30, user_id: str | None = None) -> dict:
     days = max(7, min(days, 90))
 
     query = supabase.table("leads").select(
-        "id, status, score, created_at, updated_at"
+        "id, status, score, metadata, created_at, updated_at"
     )
     if user_id:
         query = query.eq("user_id", user_id)
@@ -208,7 +287,12 @@ def get_dashboard_trends(days: int = 30, user_id: str | None = None) -> dict:
                     daily[created_key]["score_count"] += 1
 
         if lead.get("status") == "converted":
-            converted_dt = _parse_iso(lead.get("updated_at")) or created_dt
+            metadata = lead.get("metadata") or {}
+            converted_dt = (
+                _parse_iso(metadata.get("converted_at"))
+                or _parse_iso(lead.get("updated_at"))
+                or created_dt
+            )
             if converted_dt:
                 converted_key = converted_dt.date().isoformat()
                 if converted_key in daily:

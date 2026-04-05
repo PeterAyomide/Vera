@@ -49,19 +49,19 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 /* ─── CHAT SESSIONS SIDEBAR ─── */
 .chat-sessions-area{flex:1;overflow:hidden;display:flex;flex-direction:column;border-top:1px solid var(--border)}
 .sessions-head{padding:10px 12px 6px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.sessions-label{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.7px;text-transform:uppercase}
-.new-chat-btn{display:flex;align-items:center;gap:4px;padding:4px 9px;border-radius:var(--r);background:var(--amber-bg);border:1px solid var(--amber-bd);color:var(--amber);font-size:11px;font-weight:600;cursor:pointer;transition:all var(--ease);font-family:var(--font)}
+.sessions-label{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.7px;text-transform:uppercase}
+.new-chat-btn{display:flex;align-items:center;gap:4px;padding:4px 9px;border-radius:var(--r);background:var(--amber-bg);border:1px solid var(--amber-bd);color:var(--amber);font-size:12px;font-weight:600;cursor:pointer;transition:all var(--ease);font-family:var(--font)}
 .new-chat-btn:hover{background:var(--amber-bd)}
 .sessions-list{flex:1;overflow-y:auto;padding:4px 8px 8px}
 .session-item{display:flex;align-items:center;padding:6px 8px;border-radius:var(--r);cursor:pointer;transition:all var(--ease)}
 .session-item:hover{background:var(--bg3)}
 .session-item.active{background:var(--bg4);border:1px solid var(--border2)}
-.session-title{flex:1;font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.session-title{flex:1;font-size:14px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .session-item.active .session-title{color:var(--text)}
-.session-del{opacity:0;background:none;border:none;color:var(--text3);cursor:pointer;padding:2px 5px;border-radius:3px;font-size:14px;flex-shrink:0;line-height:1;transition:all var(--ease)}
-.session-item:hover .session-del{opacity:1}
+.session-del{display:none;opacity:0;background:none;border:none;color:var(--text3);cursor:pointer;padding:2px 5px;border-radius:3px;font-size:14px;flex-shrink:0;line-height:1;transition:all var(--ease)}
+.session-item:hover .session-del,.session-item.active .session-del{display:block;opacity:1}
 .session-del:hover{color:var(--coral);background:var(--coral-bg)}
-.sessions-empty{padding:12px 8px;font-size:11px;color:var(--text3);text-align:center}
+.sessions-empty{padding:12px 8px;font-size:12px;color:var(--text3);text-align:center}
 .sidebar-bottom{padding:10px 8px;border-top:1px solid var(--border);flex-shrink:0}
 .cfg-btn{display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:var(--r);cursor:pointer;color:var(--text3);font-size:12px;transition:all var(--ease)}
 .cfg-btn:hover{background:var(--bg3);color:var(--text2)}
@@ -69,6 +69,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .avatar{width:28px;height:28px;border-radius:50%;background:var(--amber-bg);border:2px solid var(--amber-bd);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;color:var(--amber);font-weight:600;flex-shrink:0}
 .user-name{font-size:12.5px;font-weight:600;color:var(--text)}
 .user-role{font-size:10px;color:var(--text3)}
+
+/* ─── MOBILE CHROME ─── */
+.mobile-overlay{display:none}
+.mobile-menu-btn{display:none;align-items:center;justify-content:center;width:38px;height:38px;border-radius:10px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;transition:all var(--ease);flex-shrink:0}
+.mobile-menu-btn:hover{border-color:var(--teal-bd);color:var(--teal);background:var(--teal-bg)}
 
 /* ─── MAIN ─── */
 .main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
@@ -89,6 +94,13 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .btn-teal{background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-bd)}.btn-teal:hover{background:var(--teal-bd);box-shadow:0 0 12px #1dd9ca25}
 .btn-coral{background:var(--coral-bg);color:var(--coral);border:1px solid var(--coral-bd)}.btn-coral:hover{background:var(--coral-bd)}
 .btn-sm{padding:5px 10px;font-size:11px}
+[data-compact-toggle]{min-width:150px;justify-content:center;gap:8px}
+.compact-toggle{position:relative;overflow:hidden}
+.compact-switch{position:relative;width:32px;height:18px;border-radius:999px;background:var(--bg5);border:1px solid var(--border3);transition:background var(--ease),border-color var(--ease),box-shadow var(--ease);flex-shrink:0}
+.compact-knob{position:absolute;top:1px;left:1px;width:14px;height:14px;border-radius:50%;background:var(--text2);transition:transform var(--ease),background var(--ease);will-change:transform}
+.compact-label{font-size:12px;line-height:1.1}
+.compact-toggle.is-on .compact-switch{background:var(--teal-bg);border-color:var(--teal-bd);box-shadow:0 0 10px #1dd9ca35 inset}
+.compact-toggle.is-on .compact-knob{transform:translateX(14px);background:var(--teal)}
 
 /* ─── VIEWS ─── */
 .view{display:none;flex:1;overflow:hidden;animation:fadeIn 180ms ease}
@@ -108,8 +120,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .stat-sub{font-size:13px;color:var(--text2);margin-top:4px}
 
 /* ─── KANBAN ─── */
-.kanban-wrap{flex:1;display:flex;overflow:hidden}
-.kanban-scroll{flex:1;display:flex;gap:12px;padding:14px 18px;overflow-x:auto;overflow-y:hidden;align-items:flex-start}
+.kanban-wrap{flex:1;display:flex;overflow:hidden;min-height:0}
+.kanban-scroll{flex:1;display:flex;gap:12px;padding:14px 18px;overflow-x:auto;overflow-y:hidden;align-items:stretch;min-height:0}
 
 /* KEY FIX: columns have a fixed height so cards scroll inside them */
 .column{
@@ -118,7 +130,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
   border:1px solid var(--border);
   border-radius:var(--r3);
   display:flex;flex-direction:column;
-  height:calc(100vh - 185px);
+  height:100%;
+  min-height:0;
   flex-shrink:0;
 }
 .col-head{padding:11px 14px 9px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
@@ -144,6 +157,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
   cursor:pointer;
   transition:all var(--ease);
   position:relative;overflow:hidden;
+  flex-shrink:0;
 }
 .lead-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px}
 .lead-card.p3::before{background:var(--coral);box-shadow:2px 0 8px #f2503a60}
@@ -169,7 +183,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .s-dead{background:var(--bg5);color:var(--text3);border:1px solid var(--border2)}
 .card-msg{font-size:15px;color:var(--text2);line-height:1.6;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .card-action{font-size:13px;color:var(--teal);margin-top:7px;line-height:1.5;display:flex;align-items:flex-start;gap:5px}
-.card-time{font-family:var(--mono);font-size:12px;color:var(--text3);margin-top:7px}
+.card-time{font-family:var(--mono);font-size:12px;color:#a8a8b3;margin-top:7px;font-weight:500}
 
 /* ─── PIPELINE RAIL ─── */
 .pipeline-rail{width:300px;min-width:300px;border-left:1px solid var(--border);background:var(--bg2);padding:12px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;flex-shrink:0}
@@ -196,14 +210,21 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .funnel-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .funnel-stage{font-size:13px;color:var(--text);font-weight:600}
 .funnel-rate{font-family:var(--mono);font-size:12px;color:var(--text2)}
+.funnel-basis{font-size:10px;color:var(--text3);margin-left:4px}
 .funnel-vol{font-family:var(--mono);font-size:11px;color:var(--text3)}
 .funnel-track{height:8px;border-radius:8px;background:var(--bg5);overflow:hidden}
 .funnel-fill{height:100%;border-radius:8px;transition:width .4s ease}
 .sparkline-wrap{background:var(--bg4);border:1px solid var(--border);border-radius:8px;padding:8px}
 .sparkline-head{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--text2);margin-bottom:6px}
 .sparkline-head strong{font-family:var(--mono);font-size:12px;color:var(--text3);font-weight:500}
+.sparkline-legend{display:flex;gap:10px;align-items:center;font-size:11px;color:var(--text3);margin-bottom:6px}
+.sparkline-key{display:inline-flex;align-items:center;gap:5px}
+.sparkline-dot{width:8px;height:8px;border-radius:50%}
+.sparkline-dot.created{background:var(--teal)}
+.sparkline-dot.converted{background:var(--amber)}
 .sparkline{width:100%;height:54px;display:block}
-.sparkline-line{fill:none;stroke:var(--teal);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.sparkline-line-created{fill:none;stroke:var(--teal);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.sparkline-line-converted{fill:none;stroke:var(--amber);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:4 3}
 .sparkline-grid{stroke:var(--border2);stroke-width:1;opacity:.5}
 .risk-list{display:flex;flex-direction:column;gap:7px}
 .risk-item{background:var(--bg4);border:1px solid var(--border);border-radius:8px;padding:8px 9px;cursor:pointer;transition:all var(--ease)}
@@ -252,20 +273,99 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .src-lbl{font-size:10px;color:var(--text3)}
 .src-tag{background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-bd);font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:4px}
 
+/* ─── PIPELINE TYPE SCALE BOOST ─── */
+#view-pipeline .stat-label{font-size:13px}
+#view-pipeline .stat-val{font-size:40px}
+#view-pipeline .stat-sub{font-size:16px}
+
+#view-pipeline .kanban-scroll{align-items:stretch;overflow-y:hidden}
+#view-pipeline .column{min-width:272px;width:272px}
+#view-pipeline .column{height:100%}
+#view-pipeline .col-name{font-size:14px}
+#view-pipeline .col-count{font-size:14px}
+#view-pipeline .cards{gap:10px}
+#view-pipeline .card-empty{font-size:15px}
+
+#view-pipeline .lead-card{padding:10px 11px}
+#view-pipeline .card-name{font-size:22px}
+#view-pipeline .card-company{font-size:17px}
+#view-pipeline .score-badge{min-width:54px;height:54px;font-size:25px}
+#view-pipeline .card-msg{font-size:15px}
+#view-pipeline .card-action{font-size:16px}
+#view-pipeline .card-time{font-size:14px}
+
+#view-pipeline .pipeline-rail{width:360px;min-width:360px}
+#view-pipeline .panel-title{font-size:14px}
+#view-pipeline .demo-btn{font-size:13px}
+#view-pipeline .metric-inline{font-size:17px}
+#view-pipeline .metric-inline strong{font-size:38px}
+#view-pipeline .analytics-title{font-size:13px}
+#view-pipeline .funnel-stage{font-size:16px}
+#view-pipeline .funnel-rate{font-size:14px}
+#view-pipeline .funnel-vol{font-size:13px}
+#view-pipeline .sparkline-head{font-size:15px}
+#view-pipeline .sparkline-head strong{font-size:14px}
+#view-pipeline .risk-name{font-size:15px}
+#view-pipeline .risk-badge{font-size:13px}
+#view-pipeline .risk-sub{font-size:14px}
+#view-pipeline .activity-top{font-size:14px}
+#view-pipeline .activity-desc{font-size:15px}
+#view-pipeline .activity-empty{font-size:15px}
+
+#view-pipeline .detail-panel.open{width:420px;min-width:420px}
+#view-pipeline .detail-head-name{font-size:22px}
+#view-pipeline .sec-title{font-size:12px}
+#view-pipeline .score-big{font-size:64px}
+#view-pipeline .score-company{font-size:16px}
+#view-pipeline .score-priority{font-size:15px}
+#view-pipeline .fl{font-size:13px}
+#view-pipeline .fv{font-size:16px}
+#view-pipeline .fv-mono{font-size:15px}
+#view-pipeline .action-box{font-size:16px}
+#view-pipeline .draft-box{font-size:16px}
+#view-pipeline .draft-placeholder{font-size:14px}
+#view-pipeline .draft-text{font-size:16px}
+#view-pipeline .draft-gen{font-size:14px}
+#view-pipeline .src-lbl{font-size:13px}
+#view-pipeline .src-tag{font-size:12px}
+
+#view-pipeline .btn{font-size:15px;padding:10px 18px}
+#view-pipeline .btn-sm{font-size:13px;padding:7px 12px}
+
+/* Pipeline density + compact mode */
+.card-msg{font-size:15px;color:var(--text2);line-height:1.55;display:-webkit-box;-webkit-line-clamp:1;line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+.card-action{display:flex;align-items:flex-start;max-width:100%;gap:6px}
+.card-action-icon{flex-shrink:0;line-height:1.4}
+.card-action-text{display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.45}
+.priority-pill{display:inline-flex;align-items:center;justify-content:center;padding:2px 8px;border-radius:999px;font-family:var(--mono);font-size:10px;line-height:1.2;margin-top:6px}
+.priority-pill.p3{color:var(--coral);background:var(--coral-bg);border:1px solid var(--coral-bd)}
+.priority-pill.p2{color:var(--amber);background:var(--amber-bg);border:1px solid var(--amber-bd)}
+.priority-pill.p1{color:var(--text2);background:var(--bg5);border:1px solid var(--border2)}
+
+#view-pipeline.compact-mode .lead-card{padding:8px 10px}
+#view-pipeline.compact-mode .card-msg,
+#view-pipeline.compact-mode .card-action,
+#view-pipeline.compact-mode .card-time{display:none}
+#view-pipeline.compact-mode .card-top{margin-bottom:0}
+#view-pipeline.compact-mode .card-name{font-size:16px}
+#view-pipeline.compact-mode .card-company{font-size:13px;margin-top:1px}
+#view-pipeline.compact-mode .score-badge{min-width:40px;height:40px;font-size:18px}
+#view-pipeline.compact-mode .priority-pill{margin-top:4px;font-size:9px;padding:2px 7px}
+
 /* ─── CHAT ─── */
 .chat-layout{flex:1;display:flex;flex-direction:column;overflow:hidden}
 .chat-messages{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px}
 .chat-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;text-align:center;padding:40px;color:var(--text3)}
 .chat-empty-icon{font-size:30px;margin-bottom:10px;opacity:.4}
 .chat-empty-title{font-family:var(--display);font-size:22px;font-weight:700;color:var(--text2);margin-bottom:5px;letter-spacing:-.3px}
-.chat-empty-sub{font-size:13px;max-width:320px;line-height:1.7;color:var(--text3)}
+.chat-empty-sub{font-size:14px;max-width:320px;line-height:1.7;color:var(--text3)}
 .chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:16px}
-.chip{background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:8px 16px;font-size:12.5px;color:var(--text2);cursor:pointer;transition:all var(--ease)}
+.chip{background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:8px 16px;font-size:13.5px;color:var(--text2);cursor:pointer;transition:all var(--ease)}
 .chip:hover{border-color:var(--teal-bd);color:var(--teal);background:var(--teal-bg);box-shadow:0 0 10px #1dd9ca18}
 .msg-row{display:flex;flex-direction:column;gap:5px}
 .msg-row.user{align-items:flex-end}
 .msg-row.ai{align-items:flex-start}
-.msg-bubble{max-width:76%;padding:11px 15px;border-radius:12px;font-size:13.5px;line-height:1.7}
+.msg-bubble{max-width:76%;padding:11px 15px;border-radius:12px;font-size:15px;line-height:1.7}
 .msg-row.user .msg-bubble{background:linear-gradient(135deg,var(--amber),var(--amber2));color:#000;font-weight:600;border-radius:12px 12px 2px 12px;box-shadow:0 0 16px #f59c2a30}
 .msg-row.ai .msg-bubble{background:var(--bg3);border:1px solid var(--border2);border-radius:12px 12px 12px 2px}
 .msg-bubble p{margin:0 0 8px}.msg-bubble p:last-child{margin-bottom:0}
@@ -279,7 +379,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .hint-dot{width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 6px var(--teal);animation:glow 2s ease-in-out infinite}
 @keyframes glow{0%,100%{opacity:.3;box-shadow:0 0 4px var(--teal)}50%{opacity:1;box-shadow:0 0 10px var(--teal)}}
 .chat-input-row{display:flex;gap:8px}
-.chat-input{flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);padding:11px 14px;font-family:var(--font);font-size:13.5px;color:var(--text);outline:none;transition:all var(--ease)}
+.chat-input{flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);padding:11px 14px;font-family:var(--font);font-size:15px;color:var(--text);outline:none;transition:all var(--ease)}
 .chat-input:focus{border-color:var(--teal-bd);box-shadow:0 0 0 3px #1dd9ca10}
 .chat-input::placeholder{color:var(--text3)}
 .send-btn{width:40px;height:40px;background:var(--teal);border:none;border-radius:var(--r2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all var(--ease);flex-shrink:0;box-shadow:0 0 12px #1dd9ca30}
@@ -334,6 +434,89 @@ textarea.form-input{resize:vertical;min-height:80px;font-family:var(--font);font
 @keyframes tp{0%,80%,100%{opacity:.2;transform:scale(.7)}40%{opacity:1;transform:scale(1)}}
 
 @media (max-width:1280px){.pipeline-rail{display:none}}
+
+@media (max-width:1024px){
+  .mobile-menu-btn{display:inline-flex}
+  .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:1400;transform:translateX(-100%);transition:transform var(--ease);box-shadow:20px 0 40px #00000070}
+  body.mobile-sidebar-open .sidebar{transform:translateX(0)}
+  .mobile-overlay{display:block;position:fixed;inset:0;background:#00000075;backdrop-filter:blur(2px);z-index:1300;opacity:0;pointer-events:none;transition:opacity var(--ease)}
+  body.mobile-sidebar-open .mobile-overlay{opacity:1;pointer-events:auto}
+
+  .topbar{padding:10px 12px;gap:8px;flex-wrap:wrap;align-items:center}
+  .cmd-brand{min-width:0;flex:1}
+  .cmd-title{font-size:19px}
+  .cmd-actions{width:100%;display:flex;gap:7px;overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px}
+  .cmd-input{display:none}
+  .cmd-actions .btn{flex:0 0 auto;padding:8px 11px}
+  .cmd-actions .btn.btn-ghost{display:none}
+  [data-compact-toggle]{display:none !important}
+
+  .stats-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stat-card{padding:12px 14px}
+  .stat-val{font-size:26px}
+
+  #view-pipeline .stat-label{font-size:11px}
+  #view-pipeline .stat-val{font-size:28px}
+  #view-pipeline .stat-sub{font-size:12px}
+
+  .kanban-wrap{flex-direction:column;overflow-y:auto;overflow-x:hidden}
+  #view-pipeline .pipeline-rail{display:flex;width:100%;min-width:0;max-height:none;border-left:none;border-bottom:1px solid var(--border);padding:10px;order:1}
+  .panel-card{padding:10px}
+  #view-pipeline .panel-title{font-size:12px}
+  #view-pipeline .metric-inline{font-size:14px}
+  #view-pipeline .metric-inline strong{font-size:28px}
+  #view-pipeline .analytics-title{font-size:11px}
+  #view-pipeline .funnel-stage{font-size:13px}
+  #view-pipeline .funnel-rate{font-size:12px}
+  #view-pipeline .funnel-vol{font-size:11px}
+  #view-pipeline .sparkline-head{font-size:12px}
+  #view-pipeline .sparkline-head strong{font-size:11px}
+  #view-pipeline .risk-name{font-size:13px}
+  #view-pipeline .risk-sub{font-size:12px}
+  #view-pipeline .activity-top{font-size:12px}
+  #view-pipeline .activity-desc{font-size:13px}
+  .activity-list{max-height:220px}
+
+  .kanban-scroll{order:2;padding:10px 12px 14px}
+  #view-pipeline .column{width:min(84vw,320px);min-width:min(84vw,320px)}
+  #view-pipeline .card-name{font-size:18px}
+  #view-pipeline .card-company{font-size:14px}
+  #view-pipeline .score-badge{min-width:46px;height:46px;font-size:21px}
+  #view-pipeline .card-msg{font-size:14px}
+  #view-pipeline .card-action{font-size:13px}
+  #view-pipeline .card-time{font-size:12px}
+
+  .detail-panel.open{position:fixed;inset:0;z-index:1500;width:100vw;min-width:0;border-left:none}
+  #view-pipeline .detail-panel.open{width:100vw;min-width:0}
+
+  .chat-messages{padding:16px}
+  .chat-foot{padding:12px 14px}
+  .msg-bubble,.msg-sources{max-width:92%}
+
+  .docs-wrap{padding:14px}
+
+  .modal{width:min(94vw,440px);max-height:92vh;overflow:auto}
+  .two-col{grid-template-columns:1fr}
+
+  .toast-area{left:12px;right:12px;bottom:12px}
+  .toast{max-width:none}
+}
+
+@media (max-width:640px){
+  .cmd-actions{gap:6px}
+  .cmd-actions .btn{padding:7px 10px;font-size:12px}
+  .stats-row{grid-template-columns:1fr}
+  .stat-card{padding:10px 12px}
+  .chat-empty{padding:24px 14px}
+  .chat-empty-title{font-size:20px}
+  .chip{padding:8px 12px}
+  .msg-bubble{font-size:14.5px}
+  .chat-input{font-size:14.5px}
+  .send-btn{width:44px;height:44px}
+  .modal{width:calc(100vw - 20px)}
+  .modal-body{padding:14px}
+  .modal-foot{padding:12px 14px}
+}
 </style>
 </head>
 <body>
@@ -392,9 +575,14 @@ textarea.form-input{resize:vertical;min-height:80px;font-family:var(--font);font
   </div>
 </div>
 
+<div class="mobile-overlay" id="mobile-overlay" onclick="closeMobileSidebar()"></div>
+
 <!-- MAIN -->
 <div class="main">
   <div class="topbar">
+    <button class="mobile-menu-btn" id="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Open navigation menu">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
     <div class="cmd-brand">
       <div class="cmd-title">Vera</div>
       <div class="cmd-sub" id="page-title">AI Operating System</div>
@@ -402,6 +590,10 @@ textarea.form-input{resize:vertical;min-height:80px;font-family:var(--font);font
     <div class="cmd-actions">
       <input class="cmd-input" id="cmd-ask" placeholder="Ask Aria..." onkeydown="if(event.key==='Enter'){event.preventDefault();quickAskAria()}">
       <button class="btn btn-ghost" onclick="quickAskAria()">Ask Aria</button>
+      <button class="btn btn-ghost compact-toggle" data-compact-toggle onclick="toggleCompactMode()" aria-pressed="false">
+        <span class="compact-switch" aria-hidden="true"><span class="compact-knob"></span></span>
+        <span class="compact-label">Compact: Off</span>
+      </button>
       <button class="btn btn-teal" id="quick-add-lead" onclick="openAddLead()">Add Lead</button>
       <button class="btn btn-primary" onclick="quickUploadDoc()">Upload Doc</button>
     </div>
@@ -432,11 +624,16 @@ textarea.form-input{resize:vertical;min-height:80px;font-family:var(--font);font
                 <span id="trend-summary">Created 0 · Converted 0</span>
                 <strong id="trend-conv-rate">0%</strong>
               </div>
+              <div class="sparkline-legend" aria-hidden="true">
+                <span class="sparkline-key"><span class="sparkline-dot created"></span>Created</span>
+                <span class="sparkline-key"><span class="sparkline-dot converted"></span>Converted</span>
+              </div>
               <svg viewBox="0 0 240 54" class="sparkline" aria-hidden="true">
                 <line class="sparkline-grid" x1="0" y1="9" x2="240" y2="9"></line>
                 <line class="sparkline-grid" x1="0" y1="27" x2="240" y2="27"></line>
                 <line class="sparkline-grid" x1="0" y1="45" x2="240" y2="45"></line>
-                <polyline class="sparkline-line" id="trend-line" points=""></polyline>
+                <polyline class="sparkline-line-created" id="trend-line-created" points=""></polyline>
+                <polyline class="sparkline-line-converted" id="trend-line-converted" points=""></polyline>
               </svg>
             </div>
           </div>
@@ -556,13 +753,40 @@ let docs         = JSON.parse(localStorage.getItem('v_docs') || '[]');
 let activityFeed = [];
 let demoFeedTimer = null;
 let analyticsState = { stats: {}, trends: { daily: [], summary: {} }, atRisk: [] };
+let compactMode = localStorage.getItem('v_pipeline_compact') === '1';
 
 // ── BOOT ─────────────────────────────────────────────────────────────────────
 window.onload = () => {
   document.getElementById('agency-name').textContent = C.name;
+  applyPipelineDensity();
   if (!C.url || !C.key) { openSettings(); return; }
   loadAll();
 };
+
+function applyPipelineDensity() {
+  const pipelineView = document.getElementById('view-pipeline');
+  if (pipelineView) pipelineView.classList.toggle('compact-mode', compactMode);
+  document.querySelectorAll('[data-compact-toggle]').forEach((toggle) => {
+    toggle.classList.toggle('is-on', compactMode);
+    toggle.setAttribute('aria-pressed', compactMode ? 'true' : 'false');
+    const label = toggle.querySelector('.compact-label');
+    if (label) label.textContent = compactMode ? 'Compact: On' : 'Compact: Off';
+  });
+}
+
+function toggleCompactMode() {
+  compactMode = !compactMode;
+  localStorage.setItem('v_pipeline_compact', compactMode ? '1' : '0');
+  applyPipelineDensity();
+}
+
+function toggleMobileSidebar() {
+  document.body.classList.toggle('mobile-sidebar-open');
+}
+
+function closeMobileSidebar() {
+  document.body.classList.remove('mobile-sidebar-open');
+}
 
 async function loadAll() {
   await Promise.allSettled([loadLeads(), loadSessions()]);
@@ -623,6 +847,7 @@ async function loadLeads() {
 
 function setStatus(ok) {
   const el = document.getElementById('api-status');
+  if (!el) return;
   el.textContent = ok ? '● Live' : '● Offline';
   el.className = 'status-pill ' + (ok ? 'pill-live' : 'pill-off');
 }
@@ -630,9 +855,11 @@ function setStatus(ok) {
 function renderStats(s) {
   document.getElementById('s-total').textContent = s.total_leads ?? leads.length ?? '—';
   const avg = leads.length ? Math.round(leads.reduce((a,l)=>a+(l.score||0),0)/leads.length) : '—';
-  document.getElementById('s-avg').textContent = s.average_score ? Math.round(s.average_score) : avg;
-  document.getElementById('s-hot').textContent = leads.filter(l=>l.priority===3).length || '0';
-  document.getElementById('s-conv').textContent = leads.filter(l=>l.status==='converted').length || '0';
+  const hotCount = s.by_priority?.high ?? leads.filter(l=>l.priority===3).length;
+  const convertedCount = s.by_status?.converted ?? leads.filter(l=>l.status==='converted').length;
+  document.getElementById('s-avg').textContent = s.average_score != null ? Math.round(s.average_score) : avg;
+  document.getElementById('s-hot').textContent = String(hotCount);
+  document.getElementById('s-conv').textContent = String(convertedCount);
 }
 
 const COLS = [
@@ -667,9 +894,10 @@ function renderAnalytics() {
   const avgEl = document.getElementById('avg-score-metric');
   const trendSummaryEl = document.getElementById('trend-summary');
   const trendRateEl = document.getElementById('trend-conv-rate');
-  const trendLine = document.getElementById('trend-line');
+  const trendLineCreated = document.getElementById('trend-line-created');
+  const trendLineConverted = document.getElementById('trend-line-converted');
   const riskList = document.getElementById('at-risk-list');
-  if (!funnelHolder || !avgEl || !trendSummaryEl || !trendRateEl || !trendLine || !riskList) return;
+  if (!funnelHolder || !avgEl || !trendSummaryEl || !trendRateEl || !trendLineCreated || !trendLineConverted || !riskList) return;
 
   const stats = analyticsState.stats || {};
 
@@ -678,62 +906,103 @@ function renderAnalytics() {
     funnelHolder.innerHTML = '<div class="activity-empty">No lead data yet.</div>';
     trendSummaryEl.textContent = 'Created 0 · Converted 0';
     trendRateEl.textContent = '0%';
-    trendLine.setAttribute('points', '');
+    trendLineCreated.setAttribute('points', '');
+    trendLineConverted.setAttribute('points', '');
     riskList.innerHTML = '<div class="activity-empty">No risky leads right now.</div>';
     return;
   }
 
   const byStatus = stats.by_status || {};
+  const funnel = stats.funnel || {};
+  const reachedFromApi = funnel.reached || null;
+  const ratesFromApi = funnel.rates || null;
   const byStage = {
-    new: byStatus.new ?? leads.filter(l=>l.status==='new').length,
-    contacted: byStatus.contacted ?? leads.filter(l=>l.status==='contacted').length,
-    qualified: byStatus.qualified ?? leads.filter(l=>l.status==='qualified').length,
-    converted: byStatus.converted ?? leads.filter(l=>l.status==='converted').length,
+    new: Number(byStatus.new ?? leads.filter(l=>l.status==='new').length),
+    contacted: Number(byStatus.contacted ?? leads.filter(l=>l.status==='contacted').length),
+    qualified: Number(byStatus.qualified ?? leads.filter(l=>l.status==='qualified').length),
+    converted: Number(byStatus.converted ?? leads.filter(l=>l.status==='converted').length),
   };
 
-  const avg = Math.round(leads.reduce((a,l)=>a+(l.score||0),0)/leads.length);
+  const statusTotal = byStage.new + byStage.contacted + byStage.qualified + byStage.converted;
+  const activeTotal = statusTotal || leads.filter(l=>l.status!=='lost').length;
+  const reached = reachedFromApi ? {
+    new: Number(reachedFromApi.new ?? 0),
+    contacted: Number(reachedFromApi.contacted ?? 0),
+    qualified: Number(reachedFromApi.qualified ?? 0),
+    converted: Number(reachedFromApi.converted ?? 0),
+  } : {
+    new: Math.max(activeTotal, 0),
+    contacted: byStage.contacted + byStage.qualified + byStage.converted,
+    qualified: byStage.qualified + byStage.converted,
+    converted: byStage.converted,
+  };
+
+  const avg = stats.average_score != null
+    ? Math.round(Number(stats.average_score))
+    : Math.round(leads.reduce((a,l)=>a+(l.score||0),0)/leads.length);
   avgEl.textContent = String(avg);
 
-  const maxVal = Math.max(...Object.values(byStage), 1);
-  const funnelRow = (stageLabel, value, rate, color='var(--teal)') => `
+  const maxVal = Math.max(...Object.values(reached), 1);
+  const funnelRow = (stageLabel, value, rate, color='var(--teal)', basis='') => `
     <div class="funnel-row">
       <div class="funnel-top">
         <div class="funnel-stage">${stageLabel}</div>
-        <div class="funnel-rate">${rate}</div>
+        <div class="funnel-rate">${rate}${basis ? `<span class="funnel-basis">of ${basis}</span>` : ''}</div>
       </div>
       <div class="funnel-track"><div class="funnel-fill" style="width:${Math.max(8,Math.round((value/maxVal)*100))}%;background:${color}"></div></div>
       <div class="funnel-vol">${value} leads</div>
     </div>`;
 
-  const pct = (n, d) => d ? `${Math.round((n / d) * 100)}%` : '0%';
-  const contactedRate = pct(byStage.contacted, byStage.new);
-  const qualifiedRate = pct(byStage.qualified, byStage.contacted);
-  const convertedRate = pct(byStage.converted, byStage.qualified);
+  const fmtPct = (value) => {
+    const num = Number(value);
+    if (!Number.isFinite(num) || num <= 0) return '0%';
+    const clipped = Math.min(100, num);
+    const rounded = Math.round(clipped * 10) / 10;
+    return Number.isInteger(rounded) ? `${rounded}%` : `${rounded.toFixed(1)}%`;
+  };
+  const pct = (n, d) => d ? fmtPct((n / d) * 100) : '0%';
+  const contactedRate = ratesFromApi?.contacted_from_new != null
+    ? fmtPct(ratesFromApi.contacted_from_new)
+    : pct(reached.contacted, reached.new);
+  const qualifiedRate = ratesFromApi?.qualified_from_contacted != null
+    ? fmtPct(ratesFromApi.qualified_from_contacted)
+    : pct(reached.qualified, reached.contacted);
+  const convertedRate = ratesFromApi?.converted_from_qualified != null
+    ? fmtPct(ratesFromApi.converted_from_qualified)
+    : pct(reached.converted, reached.qualified);
 
   funnelHolder.innerHTML = [
-    funnelRow('New', byStage.new, '100%', 'var(--text2)'),
-    funnelRow('Contacted', byStage.contacted, contactedRate, 'var(--amber)'),
-    funnelRow('Qualified', byStage.qualified, qualifiedRate, 'var(--teal)'),
-    funnelRow('Converted', byStage.converted, convertedRate, 'var(--green)'),
+    funnelRow('New', reached.new, '100%', 'var(--text2)', 'total'),
+    funnelRow('Contacted', reached.contacted, contactedRate, 'var(--amber)', 'New'),
+    funnelRow('Qualified', reached.qualified, qualifiedRate, 'var(--teal)', 'Contacted'),
+    funnelRow('Converted', reached.converted, convertedRate, 'var(--green)', 'Qualified'),
   ].join('');
 
   const trend = analyticsState.trends || { daily: [], summary: {} };
   const daily = Array.isArray(trend.daily) ? trend.daily : [];
   const createdSeries = daily.map(x => Number(x.created || 0));
-  const maxPoint = Math.max(...createdSeries, 1);
+  const convertedSeries = daily.map(x => Number(x.converted || 0));
+  const maxPoint = Math.max(...createdSeries, ...convertedSeries, 1);
+
+  const makePoints = (series) => series.map((v, i) => {
+    const x = Math.round((i / Math.max(1, daily.length - 1)) * 240);
+    const y = Math.round(45 - ((v / maxPoint) * 36));
+    return `${x},${y}`;
+  }).join(' ');
+
   if (daily.length > 1) {
-    const points = createdSeries.map((v, i) => {
-      const x = Math.round((i / (daily.length - 1)) * 240);
-      const y = Math.round(45 - ((v / maxPoint) * 36));
-      return `${x},${y}`;
-    }).join(' ');
-    trendLine.setAttribute('points', points);
+    trendLineCreated.setAttribute('points', makePoints(createdSeries));
+    trendLineConverted.setAttribute('points', makePoints(convertedSeries));
   } else {
-    trendLine.setAttribute('points', '0,45 240,45');
+    trendLineCreated.setAttribute('points', '0,45 240,45');
+    trendLineConverted.setAttribute('points', '0,45 240,45');
   }
   const tSummary = trend.summary || {};
-  trendSummaryEl.textContent = `Created ${tSummary.created || 0} · Converted ${tSummary.converted || 0}`;
-  trendRateEl.textContent = `${tSummary.conversion_rate || 0}%`;
+  const createdTotal = Number(tSummary.created || 0);
+  const convertedTotal = Number(tSummary.converted || 0);
+  const conversionPct = Math.round(Number(tSummary.conversion_rate || 0));
+  trendSummaryEl.textContent = `Created: ${createdTotal} · Converted: ${convertedTotal} (${conversionPct}% of created) · Peak: ${maxPoint}/day`;
+  trendRateEl.textContent = '';
 
   const atRisk = analyticsState.atRisk || [];
   if (!atRisk.length) {
@@ -817,22 +1086,30 @@ function ago(ts){
 }
 
 function renderCard(l) {
-  const sc = l.score>=75?'s-high':l.score>=45?'s-mid':l.score>=20?'s-low':'s-dead';
+  const scoreClass = l.score>=75?'s-high':l.score>=45?'s-mid':l.score>=20?'s-low':'s-dead';
+  const pClass = pc(l.priority);
+  const pLabel = l.priority===3 ? 'High' : l.priority===2 ? 'Medium' : 'Low';
   const action = l.recommended_action
-    ? `<div class="card-action">⚡ ${escHtml(l.recommended_action.slice(0,72))}${l.recommended_action.length>72?'…':''}</div>` : '';
+    ? `<div class="card-action" onclick="toggleCardAction(event, this)"><span class="card-action-icon">⚡</span><span class="card-action-text">${escHtml(l.recommended_action.slice(0,72))}${l.recommended_action.length>72?'…':''}</span></div>` : '';
   return `
     <div class="lead-card ${pc(l.priority)}" onclick="openDetail('${l.id}')">
       <div class="card-top">
         <div class="card-info">
           <div class="card-name">${escHtml(l.name||'Unknown')}</div>
           <div class="card-company">${escHtml(l.company||'—')}</div>
+          <div class="priority-pill ${pClass}">${pLabel}</div>
         </div>
-        <div class="score-badge ${sc}">${Math.round(l.score||0)}</div>
+        <div class="score-badge ${scoreClass}">${Math.round(l.score||0)}</div>
       </div>
       <div class="card-msg">${escHtml(l.notes||'No message.')}</div>
       ${action}
       <div class="card-time">${ago(l.created_at)}</div>
     </div>`;
+}
+
+function toggleCardAction(event, el) {
+  event.stopPropagation();
+  el.classList.toggle('expanded');
 }
 
 // ── DETAIL PANEL ──────────────────────────────────────────────────────────────
@@ -1235,9 +1512,14 @@ function showView(v){
   document.getElementById('view-'+v).classList.add('active');
   document.getElementById('nav-'+v)?.classList.add('active');
   const addLeadBtn = document.getElementById('quick-add-lead');
+  const compactToggles = document.querySelectorAll('[data-compact-toggle]');
   if (addLeadBtn) addLeadBtn.style.display = v === 'pipeline' ? 'inline-flex' : 'none';
+  compactToggles.forEach((btn) => {
+    btn.style.display = v === 'pipeline' ? 'inline-flex' : 'none';
+  });
   document.getElementById('page-title').textContent='AI Operating System';
   if(v!=='pipeline')closeDetail();
+  closeMobileSidebar();
 }
 
 function quickAskAria(){
@@ -1292,8 +1574,12 @@ function toast(msg,type='ok'){
 
 // ── SHORTCUTS ─────────────────────────────────────────────────────────────────
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeDetail();closeSettings();closeAddLead()}
+  if(e.key==='Escape'){closeDetail();closeSettings();closeAddLead();closeMobileSidebar()}
   if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();newChat();document.getElementById('chat-input').focus()}
+});
+
+window.addEventListener('resize', () => {
+  if (window.innerWidth > 1024) closeMobileSidebar();
 });
 </script>
 </body>

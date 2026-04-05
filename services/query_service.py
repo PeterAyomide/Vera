@@ -16,10 +16,12 @@ Key features:
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
-from typing import Dict, List, Optional
+from difflib import SequenceMatcher
+from typing import Dict, List, Optional, Tuple
 
 from openai import AsyncOpenAI
 
@@ -36,8 +38,13 @@ _openai = AsyncOpenAI(
 EMBEDDING_MODEL = "text-embedding-3-small"
 CHAT_MODEL = "gpt-4o-mini"
 
-# Similarity threshold — lowered from 0.5 to catch more relevant chunks.
+# Baseline threshold; runtime is adapted by query style in _dynamic_threshold.
 SIMILARITY_THRESHOLD = 0.3
+
+MIN_THRESHOLD = 0.18
+MAX_THRESHOLD = 0.45
+RETRIEVAL_CANDIDATE_MULTIPLIER = 4
+RERANK_SNIPPET_CHARS = 900
 
 # In-memory session store: session_id → [{"role": ..., "content": ...}, ...]
 # Sessions are capped to MAX_HISTORY turns per session.
@@ -59,6 +66,20 @@ BUSINESS_QUERY_KEYWORDS = {
     "agency", "client", "clients", "lead", "leads", "pricing", "retainer", "service",
     "services", "proposal", "project", "pipeline", "qualification", "outreach", "email",
     "sales", "conversion", "close", "playbook", "onboarding", "timeline",
+}
+
+CASUAL_QUERY_MARKERS = {
+    "kinda", "sorta", "idk", "lol", "pls", "thx", "u", "ya", "btw",
+    "any idea", "can u", "gimme", "wanna", "stuff", "things", "whatever",
+}
+
+DOMAIN_SYNONYM_MAP = {
+    "monthly package": ["retainer", "monthly retainer", "ongoing package"],
+    "price": ["pricing", "rate", "cost", "fee"],
+    "website": ["web project", "site build", "web design"],
+    "brand": ["branding", "brand strategy", "identity"],
+    "timeline": ["delivery timeline", "turnaround", "schedule"],
+    "proposal": ["scope", "statement of work", "quote"],
 }
 
 
@@ -89,30 +110,216 @@ def _vector_search(
 
 
 async def _expand_query(question: str) -> List[str]:
-    """Generate 2 alternative phrasings of the question for better recall."""
+    """Generate diverse rewrites for better recall on casual/unusual queries.
+
+    Returns up to 5 variants including:
+      - original query
+      - normalized professional rewrite
+      - keyword-focused retrieval query
+      - acronym/synonym-expanded variant
+      - typo-corrected variant
+    """
     try:
         completion = await _openai.chat.completions.create(
             model=CHAT_MODEL,
-            temperature=0.3,
+            temperature=0.2,
             messages=[
                 {
                     "role": "system",
                     "content": (
-                        "You rephrase questions to improve document retrieval. "
-                        "Given a question, output exactly 2 alternative phrasings "
-                        "using different vocabulary but asking the same thing. "
-                        "Output only the 2 phrasings, one per line, no numbering."
+                        "You optimize messy user queries for enterprise retrieval. "
+                        "Return STRICT JSON with exactly these keys: "
+                        "professional, keywords, expanded, typo_fixed. "
+                        "Rules: preserve intent, avoid adding facts, keep each under 22 words. "
+                        "'keywords' should be compact noun phrases likely to appear in docs."
+                    ),
+                },
+                {"role": "user", "content": question},
+            ],
+            response_format={"type": "json_object"},
+        )
+        raw = completion.choices[0].message.content or "{}"
+        data = json.loads(raw)
+        variants = [
+            question,
+            str(data.get("professional", "")).strip(),
+            str(data.get("keywords", "")).strip(),
+            str(data.get("expanded", "")).strip(),
+            str(data.get("typo_fixed", "")).strip(),
+        ]
+        # De-duplicate while preserving order.
+        seen = set()
+        deduped = []
+        for v in variants:
+            if not v:
+                continue
+            key = v.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(v)
+        return deduped[:5]
+    except Exception as exc:
+        logger.warning("Query expansion failed: %s", exc)
+        # Deterministic fallback rewrite path.
+        normalized = re.sub(r"\s+", " ", question).strip()
+        keywordish = " ".join([w for w in re.findall(r"[a-zA-Z0-9]+", normalized.lower()) if len(w) > 2])
+        return [normalized, keywordish][:2] if keywordish else [normalized]
+
+
+def _tokenize(text: str) -> List[str]:
+    tokens = re.findall(r"[a-zA-Z0-9]+", text.lower())
+    return [t for t in tokens if len(t) > 2]
+
+
+def _strip_noise(text: str) -> str:
+    return re.sub(r"\s+", " ", (text or "").strip())
+
+
+def _apply_domain_synonyms(question: str) -> str:
+    q = question
+    lower = q.lower()
+    for phrase, expansions in DOMAIN_SYNONYM_MAP.items():
+        if phrase in lower:
+            q += " " + " ".join(expansions)
+    return _strip_noise(q)
+
+
+def _decompose_query(question: str) -> List[str]:
+    """Split compound asks into atomic sub-questions for multi-hop retrieval."""
+    q = _strip_noise(question)
+    if len(q.split()) < 9:
+        return [q]
+
+    parts = re.split(r"\b(?:and|then|also|plus)\b|[,;]", q, flags=re.IGNORECASE)
+    parts = [p.strip(" .") for p in parts if p and p.strip()]
+
+    if len(parts) <= 1:
+        return [q]
+
+    # Keep the full query plus up to 3 atomic chunks.
+    return [q] + parts[:3]
+
+
+def _dynamic_threshold(question: str, *, probe: bool = False) -> float:
+    """Adapt similarity threshold to query shape.
+
+    Casual, short, or vague queries get a lower threshold for recall.
+    Specific longer queries get a stricter threshold for precision.
+    """
+    q = question.lower().strip()
+    wc = len(q.split())
+
+    threshold = SIMILARITY_THRESHOLD
+    if wc <= 4:
+        threshold -= 0.08
+    elif wc >= 14:
+        threshold += 0.05
+
+    if any(marker in q for marker in CASUAL_QUERY_MARKERS):
+        threshold -= 0.06
+
+    if any(k in q for k in ("exact", "specifically", "number", "price", "rate", "timeline")):
+        threshold += 0.04
+
+    if probe:
+        threshold -= 0.03
+
+    return max(MIN_THRESHOLD, min(MAX_THRESHOLD, threshold))
+
+
+def _lexical_fuzzy_score(question: str, chunk_content: str) -> float:
+    q_tokens = _tokenize(question)
+    if not q_tokens:
+        return 0.0
+
+    text = _strip_document_label(chunk_content).lower()
+    c_tokens = set(_tokenize(text))
+    overlap = sum(1 for t in q_tokens if t in c_tokens)
+    overlap_ratio = overlap / max(1, len(set(q_tokens)))
+
+    fuzzy = SequenceMatcher(None, question.lower(), text[:500]).ratio()
+    return (0.7 * overlap_ratio) + (0.3 * fuzzy)
+
+
+def _hybrid_fuse(question: str, chunks: List[dict]) -> List[dict]:
+    """Fuse dense similarity with lexical+fuzzy signals using weighted RRF."""
+    if not chunks:
+        return []
+
+    dense_sorted = sorted(chunks, key=lambda c: c.get("similarity", 0), reverse=True)
+    lexical_sorted = sorted(
+        chunks,
+        key=lambda c: _lexical_fuzzy_score(question, c.get("content", "")),
+        reverse=True,
+    )
+
+    dense_rank = {str(c.get("id")): i for i, c in enumerate(dense_sorted)}
+    lexical_rank = {str(c.get("id")): i for i, c in enumerate(lexical_sorted)}
+
+    fused: List[Tuple[float, dict]] = []
+    for c in chunks:
+        cid = str(c.get("id"))
+        d = dense_rank.get(cid, 999)
+        l = lexical_rank.get(cid, 999)
+        # Weighted reciprocal rank fusion.
+        score = (0.65 / (d + 1)) + (0.35 / (l + 1))
+        c2 = dict(c)
+        c2["hybrid_score"] = score
+        fused.append((score, c2))
+
+    fused.sort(key=lambda x: x[0], reverse=True)
+    return [c for _, c in fused]
+
+
+def _retrieval_confidence(chunks: List[dict]) -> float:
+    if not chunks:
+        return 0.0
+    top = float(chunks[0].get("similarity", 0) or 0)
+    top3 = chunks[:3]
+    avg = sum(float(c.get("similarity", 0) or 0) for c in top3) / max(1, len(top3))
+    gap = top - float(chunks[1].get("similarity", 0) or 0) if len(chunks) > 1 else top
+    # Conservative bounded blend.
+    conf = (0.55 * top) + (0.35 * avg) + (0.10 * max(0.0, gap))
+    return max(0.0, min(1.0, conf))
+
+
+def _needs_clarification(question: str, chunks: List[dict], confidence: float) -> bool:
+    if confidence >= 0.33:
+        return False
+    q = question.lower()
+    likely_factual = any(k in q for k in ("price", "pricing", "rate", "timeline", "cost", "what", "how much", "when"))
+    return likely_factual or len(q.split()) >= 5
+
+
+async def _clarify_question(question: str) -> str:
+    """Produce a concise clarification question while staying conversational."""
+    try:
+        completion = await _openai.chat.completions.create(
+            model=CHAT_MODEL,
+            temperature=0.2,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are Aria. Ask one concise clarification question to disambiguate "
+                        "the user's request for document-backed lookup. "
+                        "Offer 2-3 short options. Keep under 35 words."
                     ),
                 },
                 {"role": "user", "content": question},
             ],
         )
-        raw = completion.choices[0].message.content or ""
-        extras = [l.strip() for l in raw.strip().splitlines() if l.strip()]
-        return [question] + extras[:2]
+        text = (completion.choices[0].message.content or "").strip()
+        if text:
+            return text
     except Exception as exc:
-        logger.warning("Query expansion failed: %s", exc)
-        return [question]
+        logger.warning("Clarification generation failed: %s", exc)
+
+    return (
+        "I can help, but I need a bit more direction. Do you mean pricing, timeline, "
+        "service scope, or a specific proposal/client context?"
+    )
 
 
 def _deduplicate_chunks(chunks: List[dict]) -> List[dict]:
@@ -138,7 +345,7 @@ async def _rerank_chunks(
         return chunks
 
     numbered = "\n\n".join(
-        f"[{i+1}] {chunk.get('content', '')[:400]}"
+        f"[{i+1}] {chunk.get('content', '')[:RERANK_SNIPPET_CHARS]}"
         for i, chunk in enumerate(chunks)
     )
     try:
@@ -163,7 +370,6 @@ async def _rerank_chunks(
                 },
             ],
         )
-        import json
         raw = (completion.choices[0].message.content or "").strip()
         # Strip markdown fences if present
         if raw.startswith("```"):
@@ -316,9 +522,27 @@ async def query_knowledge(
     """
     logger.info("Query (session=%s): %.80s…", session_id, question)
 
-    # 0. General conversational mode for non-document questions.
-    # This makes chat feel intelligent even when no KB lookup is needed.
-    if _looks_general_chat(question):
+    # 0. Dual-pass routing: probe retrieval first, then decide path.
+    # This avoids brittle intent routing for casual/unusual phrasings.
+    probe_threshold = _dynamic_threshold(question, probe=True)
+    try:
+        probe_emb = await _embed_query(question)
+        probe_chunks = _vector_search(
+            probe_emb,
+            user_id=user_id,
+            top_k=max(4, min(8, top_k)),
+            threshold=probe_threshold,
+        )
+        probe_chunks = _deduplicate_chunks(probe_chunks)
+    except Exception as exc:
+        logger.warning("Probe retrieval failed: %s", exc)
+        probe_chunks = []
+
+    probe_conf = _retrieval_confidence(probe_chunks)
+    prefer_general = _looks_general_chat(question)
+    should_use_rag = (probe_conf >= 0.25) or not prefer_general
+
+    if not should_use_rag:
         answer = await _answer_general_chat(question, session_id=session_id)
         if session_id:
             _push_history(session_id, "user", question)
@@ -327,6 +551,19 @@ async def query_knowledge(
 
     # 1. Expand query
     queries = await _expand_query(question)
+    # Add domain-aware synonym expansion and multi-hop decomposition.
+    queries.extend(_decompose_query(question))
+    queries.append(_apply_domain_synonyms(question))
+    # De-duplicate query list.
+    dedup_queries: List[str] = []
+    seen_queries = set()
+    for q in queries:
+        k = q.lower().strip()
+        if not k or k in seen_queries:
+            continue
+        seen_queries.add(k)
+        dedup_queries.append(q)
+    queries = dedup_queries[:8]
     logger.info("Running %d query variants", len(queries))
 
     # 2. Embed + search in parallel
@@ -334,15 +571,28 @@ async def query_knowledge(
     embeddings = await asyncio.gather(*[_embed_query(q) for q in queries])
 
     all_chunks: List[dict] = []
+    search_top_k = max(top_k * RETRIEVAL_CANDIDATE_MULTIPLIER, top_k)
     for emb in embeddings:
-        results = _vector_search(emb, user_id=user_id, top_k=top_k, threshold=SIMILARITY_THRESHOLD)
+        results = _vector_search(
+            emb,
+            user_id=user_id,
+            top_k=search_top_k,
+            threshold=_dynamic_threshold(question),
+        )
         all_chunks.extend(results)
 
     # 3. Deduplicate
     chunks = _deduplicate_chunks(all_chunks)
 
+    # 3b. Hybrid fusion (dense + lexical/fuzzy)
+    chunks = _hybrid_fuse(question, chunks)
+    candidate_cap = max(top_k * RETRIEVAL_CANDIDATE_MULTIPLIER, top_k)
+    chunks = chunks[:candidate_cap]
+
     # 4. LLM rerank (fetches extra chunks then cuts down to top_k)
     chunks = await _rerank_chunks(question, chunks, top_k=top_k)
+
+    confidence = _retrieval_confidence(chunks)
 
     if not chunks:
         answer = await _answer_general_chat(question, session_id=session_id)
@@ -350,6 +600,15 @@ async def query_knowledge(
             _push_history(session_id, "user", question)
             _push_history(session_id, "assistant", answer)
         return {"answer": answer, "sources": []}
+
+    # Low-confidence factual asks should ask a targeted clarification question,
+    # not hallucinate or force a weak answer.
+    if _needs_clarification(question, chunks, confidence):
+        clarification = await _clarify_question(question)
+        if session_id:
+            _push_history(session_id, "user", question)
+            _push_history(session_id, "assistant", clarification)
+        return {"answer": clarification, "sources": []}
 
     # 5. Build context block with document labels
     context_parts = []

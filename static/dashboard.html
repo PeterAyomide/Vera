@@ -480,11 +480,12 @@ textarea.form-input{resize:vertical;min-height:80px;font-family:var(--font);font
   .main{height:100%;min-height:0}
 
   /* ── Stats: 2×2 grid ── */
-  #view-pipeline{display:flex;flex-direction:column;overflow:hidden;min-height:0}
+  #view-pipeline{flex-direction:column;overflow:hidden;min-height:0}
+  #view-pipeline.active{display:flex}
 
-  /* ── Chat: force full viewport pane below topbar ── */
-  #view-chat{display:flex;flex-direction:column;flex:1;min-height:0;height:100%}
-  #view-chat.active{display:flex}
+  /* ── Chat: full-height pane only when active ── */
+  #view-chat{flex:1;min-height:0;height:100%}
+  #view-chat.active{display:flex;flex-direction:column}
   #view-chat .chat-layout{display:flex;flex-direction:column;flex:1;min-height:0;height:100%}
   #view-chat .chat-messages{flex:1;min-height:0;overflow-y:auto}
   #view-chat .chat-foot{flex-shrink:0}

@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 # ── API Key ──────────────────────────────────────────────────────────────────
 
-API_KEY: str = os.environ.get("API_KEY", "")
+API_KEY: str = os.environ.get("AGENCYOS_API_KEY", "") or os.environ.get("API_KEY", "")
 
 _api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 

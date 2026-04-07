@@ -73,6 +73,11 @@ CASUAL_QUERY_MARKERS = {
     "any idea", "can u", "gimme", "wanna", "stuff", "things", "whatever",
 }
 
+FAST_OUTREACH_MARKERS = {
+    "draft email", "write email", "first-touch email", "outreach email",
+    "cold email", "follow-up email", "intro email",
+}
+
 DOMAIN_SYNONYM_MAP = {
     "monthly package": ["retainer", "monthly retainer", "ongoing package"],
     "price": ["pricing", "rate", "cost", "fee"],
@@ -290,6 +295,15 @@ def _needs_clarification(question: str, chunks: List[dict], confidence: float) -
     q = question.lower()
     likely_factual = any(k in q for k in ("price", "pricing", "rate", "timeline", "cost", "what", "how much", "when"))
     return likely_factual or len(q.split()) >= 5
+
+
+def _is_fast_outreach_request(question: str) -> bool:
+    q = (question or "").lower()
+    if not q:
+        return False
+    has_email_intent = any(m in q for m in FAST_OUTREACH_MARKERS)
+    has_generation_verb = any(v in q for v in ("write", "draft", "generate", "compose"))
+    return has_email_intent or ("email" in q and has_generation_verb)
 
 
 async def _clarify_question(question: str) -> str:
@@ -549,50 +563,81 @@ async def query_knowledge(
             _push_history(session_id, "assistant", answer)
         return {"answer": answer, "sources": []}
 
-    # 1. Expand query
-    queries = await _expand_query(question)
-    # Add domain-aware synonym expansion and multi-hop decomposition.
-    queries.extend(_decompose_query(question))
-    queries.append(_apply_domain_synonyms(question))
-    # De-duplicate query list.
-    dedup_queries: List[str] = []
-    seen_queries = set()
-    for q in queries:
-        k = q.lower().strip()
-        if not k or k in seen_queries:
-            continue
-        seen_queries.add(k)
-        dedup_queries.append(q)
-    queries = dedup_queries[:8]
-    logger.info("Running %d query variants", len(queries))
+    try:
+        # 1-4. Retrieval strategy: fast path for outreach drafting, full path otherwise.
+        fast_outreach = _is_fast_outreach_request(question)
+        if fast_outreach:
+            logger.info("Using fast outreach retrieval path")
+            query_text = _apply_domain_synonyms(question)
+            emb = await _embed_query(query_text)
+            search_top_k = max(min(top_k + 2, 8), top_k)
+            chunks = _vector_search(
+                emb,
+                user_id=user_id,
+                top_k=search_top_k,
+                threshold=_dynamic_threshold(question, probe=True),
+            )
+            chunks = _deduplicate_chunks(chunks)[:top_k]
+        else:
+            # 1. Expand query
+            queries = await _expand_query(question)
+            # Add domain-aware synonym expansion and multi-hop decomposition.
+            queries.extend(_decompose_query(question))
+            queries.append(_apply_domain_synonyms(question))
+            # De-duplicate query list.
+            dedup_queries: List[str] = []
+            seen_queries = set()
+            for q in queries:
+                k = q.lower().strip()
+                if not k or k in seen_queries:
+                    continue
+                seen_queries.add(k)
+                dedup_queries.append(q)
+            queries = dedup_queries[:8]
+            logger.info("Running %d query variants", len(queries))
 
-    # 2. Embed + search in parallel
-    import asyncio
-    embeddings = await asyncio.gather(*[_embed_query(q) for q in queries])
+            # 2. Embed + search in parallel
+            import asyncio
+            embeddings = await asyncio.gather(*[_embed_query(q) for q in queries])
 
-    all_chunks: List[dict] = []
-    search_top_k = max(top_k * RETRIEVAL_CANDIDATE_MULTIPLIER, top_k)
-    for emb in embeddings:
-        results = _vector_search(
-            emb,
-            user_id=user_id,
-            top_k=search_top_k,
-            threshold=_dynamic_threshold(question),
-        )
-        all_chunks.extend(results)
+            all_chunks: List[dict] = []
+            search_top_k = max(top_k * RETRIEVAL_CANDIDATE_MULTIPLIER, top_k)
+            for emb in embeddings:
+                results = _vector_search(
+                    emb,
+                    user_id=user_id,
+                    top_k=search_top_k,
+                    threshold=_dynamic_threshold(question),
+                )
+                all_chunks.extend(results)
 
-    # 3. Deduplicate
-    chunks = _deduplicate_chunks(all_chunks)
+            # 3. Deduplicate
+            chunks = _deduplicate_chunks(all_chunks)
 
-    # 3b. Hybrid fusion (dense + lexical/fuzzy)
-    chunks = _hybrid_fuse(question, chunks)
-    candidate_cap = max(top_k * RETRIEVAL_CANDIDATE_MULTIPLIER, top_k)
-    chunks = chunks[:candidate_cap]
+            # 3b. Hybrid fusion (dense + lexical/fuzzy)
+            chunks = _hybrid_fuse(question, chunks)
+            candidate_cap = max(top_k * RETRIEVAL_CANDIDATE_MULTIPLIER, top_k)
+            chunks = chunks[:candidate_cap]
 
-    # 4. LLM rerank (fetches extra chunks then cuts down to top_k)
-    chunks = await _rerank_chunks(question, chunks, top_k=top_k)
+            # 4. LLM rerank (fetches extra chunks then cuts down to top_k)
+            chunks = await _rerank_chunks(question, chunks, top_k=top_k)
 
-    confidence = _retrieval_confidence(chunks)
+        confidence = _retrieval_confidence(chunks)
+    except Exception as exc:
+        logger.warning("RAG retrieval failed, falling back to chat-only response: %s", exc)
+        try:
+            answer = await _answer_general_chat(question, session_id=session_id)
+        except Exception as chat_exc:
+            logger.warning("Fallback chat generation failed: %s", chat_exc)
+            answer = (
+                "I hit a temporary model limit while generating this response. "
+                "Please try again in about a minute."
+            )
+
+        if session_id:
+            _push_history(session_id, "user", question)
+            _push_history(session_id, "assistant", answer)
+        return {"answer": answer, "sources": []}
 
     if not chunks:
         answer = await _answer_general_chat(question, session_id=session_id)

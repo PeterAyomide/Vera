@@ -1363,22 +1363,15 @@ async function genDraft(id) {
   const l = leads.find(x=>x.id===id);
   if(!l) return;
   const box = document.getElementById('draft-box');
-  box.innerHTML = `<div class="draft-gen"><div class="typing"><span></span><span></span><span></span></div>Searching knowledge base…</div>`;
+  box.innerHTML = `<div class="draft-gen"><div class="typing"><span></span><span></span><span></span></div>Generating draft from knowledge base…</div>`;
   try {
-    pushActivity('📚', 'CorporateBrain searched knowledge base for outreach context');
-    const rag = await api('/query','POST',{
-      question: `Best approach for a client like ${l.company||'this company'} needing: ${l.notes||''}`,
-      top_k: 4,
-    });
-    box.innerHTML = `<div class="draft-gen"><div class="typing"><span></span><span></span><span></span></div>Drafting personalized email…</div>`;
     pushActivity('✉', `Outreach engine drafting an email for ${l.company||l.name}`);
-    const ragSummary = stripInlineSources(rag.answer || '');
     const draft = await api('/query','POST',{
-      question: `Write a professional first-touch email to ${l.name} at ${l.company||'their company'} who said: "${l.notes||''}". Use this context from our agency: ${ragSummary}. Keep it under 200 words, end with a clear CTA.`,
+      question: `Write a professional first-touch email to ${l.name} at ${l.company||'their company'} who said: "${l.notes||''}". Use relevant agency knowledge where helpful. Keep it under 180 words and end with a clear CTA.`,
       top_k: 3,
     });
     const cleanDraft = stripInlineSources(draft.answer || '');
-    const srcs = normalizeSources(rag.sources||[]);
+    const srcs = normalizeSources(draft.sources||[]);
     const subject = `Intro from ${C.name}`;
     const mailto = buildMailto(l.email || '', subject, cleanDraft);
     box.innerHTML = `
@@ -1387,7 +1380,10 @@ async function genDraft(id) {
       ${l.email?`<div class="d-actions"><a class="btn btn-teal btn-sm" href="${mailto}">Send via Gmail</a></div>`:''}`;
     box.classList.add('flash');
     setTimeout(()=>box.classList.remove('flash'), 320);
-    pushActivity('🧠', `LeadSentinel prepared outreach strategy for ${l.company||l.name}`);
+    if (srcs.length) {
+      pushActivity('📚', `CorporateBrain grounded draft with ${srcs.length} source references`);
+    }
+    pushActivity('🧠', `LeadSentinel prepared outreach draft for ${l.company||l.name}`);
     toast('✓ Draft generated from your knowledge base');
   } catch(e) {
     box.innerHTML = `<div class="draft-placeholder" style="color:var(--coral)">Failed: ${e.message}</div>`;

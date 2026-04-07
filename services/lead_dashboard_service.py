@@ -172,7 +172,8 @@ def update_lead(lead_id: str, updates: dict) -> dict:
 def get_dashboard_stats(user_id: str | None = None) -> dict:
     """Get aggregate stats for the dashboard."""
 
-    query = supabase.table("leads").select(
+    query = supabase.tab
+    le("leads").select(
         "id, score, priority, status, metadata, created_at", count="exact"
     )
     if user_id:

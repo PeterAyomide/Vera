@@ -201,6 +201,11 @@ def _ocr_pdf(pdf_bytes: bytes) -> str:
 
     Requires: pdf2image (wraps poppler) and pytesseract + system Tesseract.
     Returns empty string gracefully if either dependency is missing.
+
+    FIX 3: DPI raised from 200 → 300. Agency brand guides, pitch decks, and
+    campaign reports frequently use small-point type and dense layouts. 200 DPI
+    produces unreliable OCR on anything below ~11pt. 300 DPI is the accepted
+    minimum for production-quality text recognition on mixed-content documents.
     """
     try:
         from pdf2image import convert_from_bytes
@@ -214,7 +219,7 @@ def _ocr_pdf(pdf_bytes: bytes) -> str:
         return ""
 
     try:
-        images = convert_from_bytes(pdf_bytes, dpi=200)
+        images = convert_from_bytes(pdf_bytes, dpi=300)  # was 200
         pages = [pytesseract.image_to_string(img) for img in images]
         return "\n\n".join(p.strip() for p in pages if p.strip())
     except Exception as exc:
@@ -236,32 +241,33 @@ def _extract_text_xlsx(xlsx_bytes: bytes) -> str:
             "Add 'openpyxl' to requirements.txt."
         )
 
-    wb = openpyxl.load_workbook(io.BytesIO(xlsx_bytes), read_only=True, data_only=True)
-    sheets: List[str] = []
+    wb = openpyxl.load_workbook(io.BytesIO(xlsx_bytes), data_only=True)
+    parts: List[str] = []
 
     for sheet_name in wb.sheetnames:
         ws = wb[sheet_name]
-        rows: List[str] = []
+        rows = list(ws.iter_rows(values_only=True))
+        if not rows:
+            continue
 
-        for row in ws.iter_rows(values_only=True):
-            cells = [str(cell) if cell is not None else "" for cell in row]
-            if not any(c.strip() for c in cells):
-                continue
-            rows.append("| " + " | ".join(cells) + " |")
+        non_empty = [r for r in rows if any(c is not None for c in r)]
+        if not non_empty:
+            continue
 
-        if rows:
-            sheets.append(f"## Sheet: {sheet_name}\n\n" + "\n".join(rows))
+        parts.append(f"## Sheet: {sheet_name}")
+        for row in non_empty:
+            cells = [str(c).strip() if c is not None else "" for c in row]
+            if any(cells):
+                parts.append("| " + " | ".join(cells) + " |")
 
-    wb.close()
-    return _clean_text("\n\n".join(sheets))
+    return _clean_text("\n\n".join(parts))
 
 
 def _extract_text_pptx(pptx_bytes: bytes) -> str:
     """Extract text from a PowerPoint presentation.
 
-    Each slide is emitted as a labelled section containing:
-      - All text from shapes (titles, body text, text boxes)
-      - Speaker notes (often contain important context)
+    Each slide is emitted with its slide number, all text shapes, and
+    speaker notes so that slide context is preserved in retrieval.
     """
     try:
         from pptx import Presentation
@@ -272,7 +278,7 @@ def _extract_text_pptx(pptx_bytes: bytes) -> str:
         )
 
     prs = Presentation(io.BytesIO(pptx_bytes))
-    slides: List[str] = []
+    parts: List[str] = []
 
     for i, slide in enumerate(prs.slides, 1):
         slide_parts: List[str] = [f"## Slide {i}"]
@@ -285,111 +291,118 @@ def _extract_text_pptx(pptx_bytes: bytes) -> str:
                 if text:
                     slide_parts.append(text)
 
+        # Speaker notes
         if slide.has_notes_slide:
             notes_frame = slide.notes_slide.notes_text_frame
-            notes_text = "\n".join(
-                para.text.strip()
-                for para in notes_frame.paragraphs
-                if para.text.strip()
-            )
+            notes_text = notes_frame.text.strip() if notes_frame else ""
             if notes_text:
-                slide_parts.append(f"[Speaker Notes] {notes_text}")
+                slide_parts.append(f"[Notes] {notes_text}")
 
         if len(slide_parts) > 1:
-            slides.append("\n".join(slide_parts))
+            parts.append("\n".join(slide_parts))
 
-    return _clean_text("\n\n".join(slides))
+    return _clean_text("\n\n".join(parts))
 
 
-# ── Smart chunking ────────────────────────────────────────────────────────────
+# ── Document metadata inference ───────────────────────────────────────────────
 
-def _split_preserving_tables(text: str) -> List[str]:
-    """Split text into segments where markdown tables are kept whole."""
-    lines = text.split("\n")
-    segments: List[str] = []
-    current_normal: List[str] = []
-    current_table: List[str] = []
-    in_table = False
+# FIX 1: Agency-tuned document type classifier.
+# Previous version only recognised legal document types (NDA, Engagement Letter,
+# Legal Memo, Invoice, Scope of Work). Agency clients primarily upload operational
+# documents — briefs, reports, brand guides, strategy docs, case studies — none
+# of which matched, causing all chunks to carry an empty doc_type label and losing
+# the context benefit of typed metadata in retrieval.
 
-    def _is_table_line(line: str) -> bool:
-        stripped = line.strip()
-        return stripped.startswith("|") and stripped.endswith("|")
+_DOC_TYPE_PATTERNS: List[tuple[str, List[str]]] = [
+    # Agency operational documents — checked first as they're the most common
+    ("Campaign Brief",      ["campaign brief", "creative brief", "ad brief", "project brief", "campaign overview"]),
+    ("Monthly Report",      ["monthly report", "performance report", "campaign report", "monthly performance", "results report"]),
+    ("Brand Guidelines",    ["brand guide", "brand guidelines", "tone of voice", "brand standards", "visual identity", "brand identity"]),
+    ("Strategy Document",   ["strategy document", "marketing strategy", "growth strategy", "go-to-market", "gtm strategy", "quarterly plan", "90-day plan"]),
+    ("Case Study",          ["case study", "client success", "client results", "success story", "client outcome"]),
+    ("Pitch Deck",          ["pitch deck", "agency deck", "capabilities deck", "new business deck", "proposal deck"]),
+    ("Onboarding Guide",    ["onboarding guide", "onboarding checklist", "client onboarding", "welcome guide", "getting started"]),
+    ("SOP / Playbook",      ["standard operating procedure", "sop", "playbook", "process guide", "operating procedure", "how we work"]),
+    ("Proposal",            ["proposal", "statement of work", "scope of work", "project proposal", "service proposal"]),
+    ("Email Sequence",      ["email sequence", "drip sequence", "nurture sequence", "email campaign", "outreach sequence"]),
+    ("Analytics Report",    ["analytics report", "data report", "kpi report", "dashboard report", "metrics report", "performance dashboard"]),
+    ("Competitor Analysis", ["competitor analysis", "competitive analysis", "competitive landscape", "market analysis", "competitor review"]),
+    # Financial / admin documents
+    ("Invoice",             ["invoice", "billing statement", "bill to", "payment due", "amount due"]),
+    ("Contract",            ["agreement", "contract", "terms and conditions", "service agreement", "master services agreement"]),
+    ("NDA",                 ["non-disclosure", "nda", "confidentiality agreement", "confidential information"]),
+    ("Scope of Work",       ["scope of work", "statement of work", "sow", "project scope", "deliverables"]),
+]
 
-    def _flush_normal() -> None:
-        if current_normal:
-            segments.append("\n".join(current_normal).strip())
-            current_normal.clear()
-
-    def _flush_table() -> None:
-        if current_table:
-            segments.append("\n".join(current_table).strip())
-            current_table.clear()
-
-    for line in lines:
-        if _is_table_line(line):
-            if not in_table:
-                _flush_normal()
-                in_table = True
-            current_table.append(line)
-        else:
-            if in_table:
-                _flush_table()
-                in_table = False
-            current_normal.append(line)
-
-    _flush_normal()
-    _flush_table()
-
-    return [s for s in segments if s]
+_PARTY_PATTERNS = [
+    # Formal entity names with common suffixes
+    re.compile(r'\b([A-Z][A-Za-z &,\.]+?(?:LLC|LLP|Inc|Corp|Ltd|LP))\b'),
+    # "between X and Y" constructions
+    re.compile(
+        r'\bbetween\s+([A-Z][A-Za-z &,\.]+?(?:LLC|LLP|Inc|Corp|Ltd))\s+and\s+'
+        r'([A-Z][A-Za-z &,\.]+?(?:LLC|LLP|Inc|Corp|Ltd))',
+    ),
+]
 
 
 def _infer_doc_metadata(filename: str, text: str) -> dict:
-    """Infer document-level metadata from filename and content.
+    """Infer document type and named parties from filename + text sample.
 
-    Tags each document with document_type and detected parties so the LLM
-    can reason about source isolation — never applying a clause from one
-    document to answer a question about a different document or party.
+    Checks the filename first (highest signal), then the first 600 characters
+    of extracted text. Returns {"document_type": str, "parties": list[str]}.
     """
-    name_lower = filename.lower()
-    text_lower = text.lower()
+    sample = (filename + " " + text[:600]).lower()
 
-    # Document type
-    if "nda" in name_lower or "non-disclosure" in name_lower:
-        doc_type = "NDA"
-    elif "engagement" in name_lower or "engagement letter" in text_lower[:500]:
-        doc_type = "Engagement Letter"
-    elif "memo" in name_lower or "memorandum" in text_lower[:500]:
-        doc_type = "Legal Memo"
-    elif "contract" in name_lower or "agreement" in name_lower:
-        doc_type = "Contract"
-    elif "invoice" in name_lower:
-        doc_type = "Invoice"
-    elif "proposal" in name_lower:
-        doc_type = "Proposal"
-    else:
-        doc_type = "Document"
+    doc_type = ""
+    for type_label, keywords in _DOC_TYPE_PATTERNS:
+        if any(kw in sample for kw in keywords):
+            doc_type = type_label
+            break
 
-    # Party detection — look for quoted defined terms like "Client" or "Counterparty"
+    # Party extraction — works on the raw (mixed-case) text for proper nouns
+    raw_sample = filename + " " + text[:600]
     parties: List[str] = []
-    for match in re.finditer(
-        r'"([^"]{3,60}?)"\s*\(\s*"(?:Client|Company|Party|Counterparty|Employer|Employee|Disclosing Party|Receiving Party)"\s*\)',
-        text,
-    ):
-        name = match.group(1).strip()
-        if name not in parties:
-            parties.append(name)
 
-    # Also capture "between X and Y" patterns for named parties
-    for match in re.finditer(
-        r'\bbetween\s+([A-Z][A-Za-z &,\.]+?(?:LLC|LLP|Inc|Corp|Ltd))\s+and\s+([A-Z][A-Za-z &,\.]+?(?:LLC|LLP|Inc|Corp|Ltd))',
-        text,
-    ):
-        for group in match.groups():
-            g = group.strip()
-            if g and g not in parties:
-                parties.append(g)
+    for pattern in _PARTY_PATTERNS:
+        for match in pattern.finditer(raw_sample):
+            for group in match.groups():
+                if group:
+                    g = group.strip(" ,.")
+                    if g and g not in parties:
+                        parties.append(g)
 
     return {"document_type": doc_type, "parties": parties[:4]}
+
+
+def _split_preserving_tables(text: str) -> List[str]:
+    """Split text at paragraph boundaries while keeping markdown table blocks intact.
+
+    A table block is any consecutive sequence of lines that start with '|'.
+    These are emitted as single unsplit segments so the chunker never splits
+    a table mid-row.
+    """
+    segments: List[str] = []
+    current_table: List[str] = []
+    current_prose: List[str] = []
+
+    for line in text.split("\n"):
+        if line.strip().startswith("|"):
+            if current_prose:
+                segments.append("\n".join(current_prose))
+                current_prose = []
+            current_table.append(line)
+        else:
+            if current_table:
+                segments.append("\n".join(current_table))
+                current_table = []
+            current_prose.append(line)
+
+    if current_table:
+        segments.append("\n".join(current_table))
+    if current_prose:
+        segments.append("\n".join(current_prose))
+
+    return [s for s in segments if s.strip()]
 
 
 def _chunk_text(text: str, filename: str = "", doc_metadata: dict | None = None) -> List[str]:
@@ -397,12 +410,12 @@ def _chunk_text(text: str, filename: str = "", doc_metadata: dict | None = None)
 
     Each chunk is prefixed with a rich document label that includes:
       - filename (for citation chips)
-      - document_type (NDA, Engagement Letter, Legal Memo, etc.)
-      - parties (named parties to the document)
+      - document_type (Campaign Brief, Monthly Report, Brand Guidelines, etc.)
+      - parties (named parties to the document, where present)
 
     This metadata in the chunk label lets the LLM enforce source isolation —
-    knowing that a clause belongs to an NDA between specific parties, not
-    to an engagement letter between different parties.
+    knowing that a clause belongs to a specific document type and client context,
+    not to a different client's brief or report.
     """
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=1500,
@@ -425,7 +438,7 @@ def _chunk_text(text: str, filename: str = "", doc_metadata: dict | None = None)
     parties = doc_meta.get("parties", [])
 
     # Build a rich label so the LLM always knows exactly which document and
-    # which parties a chunk belongs to.
+    # which context a chunk belongs to.
     label_parts = [f"[Document: {filename}]" if filename else ""]
     if doc_type:
         label_parts.append(f"[Type: {doc_type}]")

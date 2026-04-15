@@ -78,6 +78,9 @@ FAST_OUTREACH_MARKERS = {
     "cold email", "follow-up email", "intro email",
 }
 
+# ── FIX 1: Agency-tuned domain synonym map ────────────────────────────────────
+# Removed legal-document artifacts (document reproduction / photocopy clauses).
+# Added agency acronyms and terminology that appear in briefs, reports, and decks.
 DOMAIN_SYNONYM_MAP = {
     "monthly package": ["retainer", "monthly retainer", "ongoing package"],
     "price": ["pricing", "rate", "cost", "fee"],
@@ -85,9 +88,22 @@ DOMAIN_SYNONYM_MAP = {
     "brand": ["branding", "brand strategy", "identity"],
     "timeline": ["delivery timeline", "turnaround", "schedule"],
     "proposal": ["scope", "statement of work", "quote"],
-    "printing": ["document reproduction", "reproduction", "copies", "photocopy"],
-    "print": ["reproduce", "document reproduction", "copy", "reproduction cost"],
-    "pages": ["page", "document reproduction", "copies"],
+    # Agency performance acronyms — query expander won't catch these unprompted
+    "roas": ["return on ad spend", "revenue per ad dollar", "ad return", "return on advertising spend"],
+    "cpl": ["cost per lead", "lead cost", "acquisition cost per lead", "cost to acquire lead"],
+    "ctr": ["click-through rate", "click rate", "clicks per impression"],
+    "cac": ["customer acquisition cost", "cost to acquire", "cost per acquisition"],
+    "cpa": ["cost per acquisition", "cost per action", "conversion cost"],
+    "ltv": ["lifetime value", "customer lifetime value", "long-term value"],
+    "mrr": ["monthly recurring revenue", "monthly revenue", "recurring revenue"],
+    "kpi": ["key performance indicator", "performance metric", "success metric"],
+    "icp": ["ideal customer profile", "target customer", "buyer persona"],
+    # Document type synonyms for agency deliverables
+    "brief": ["creative brief", "campaign brief", "project brief", "scope"],
+    "deck": ["presentation", "slide deck", "pitch deck", "slides"],
+    "report": ["performance report", "monthly report", "campaign results", "analytics report"],
+    "sop": ["standard operating procedure", "process document", "playbook", "guidelines"],
+    "case study": ["client success story", "result showcase", "client outcome"],
 }
 
 
@@ -303,7 +319,7 @@ def _retrieval_confidence(chunks: List[dict]) -> float:
 
 
 def _needs_clarification(question: str, chunks: List[dict], confidence: float) -> bool:
-    # Threshold lowered to 0.22: legal/formal docs score lower cosine similarity
+    # Threshold lowered to 0.22: agency docs score lower cosine similarity
     # against conversational queries so 0.33 was firing too aggressively.
     # Word-count trigger removed: a long specific question with chunks found
     # should never be redirected to clarification.
@@ -350,7 +366,7 @@ async def _clarify_question(question: str) -> str:
 
     return (
         "I can help, but I need a bit more direction. Do you mean pricing, timeline, "
-        "service scope, or a specific proposal/client context?"
+        "service scope, or a specific campaign or client context?"
     )
 
 
@@ -387,10 +403,9 @@ def _extract_parties_from_question(question: str) -> List[str]:
             parties.append(token)
 
     # Pattern 2: Title Case runs of 2+ words (names without entity suffix)
-    # e.g. "Danielle Okonkwo", "James Osei"
+    # e.g. "Bloom Health", "Apex Insurance"
     for match in re.finditer(r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b', question):
         name = match.group(1).strip()
-        # Skip if already captured as part of an entity name
         token = name.lower()
         if not any(token in p for p in parties) and token not in parties:
             parties.append(token)
@@ -401,8 +416,8 @@ def _extract_parties_from_question(question: str) -> List[str]:
 def _scope_chunks_by_party(question: str, chunks: List[dict]) -> List[dict]:
     """Filter and boost chunks based on party match with the question.
 
-    When a question names specific parties (e.g. "Harrington & Cole and Luminary
-    Ventures"), chunks are handled as follows:
+    When a question names specific parties (e.g. "Bloom Health" or "Apex Insurance"),
+    chunks are handled as follows:
 
       HARD EXCLUDE: chunk has explicit [Parties: ...] metadata and NONE of
         those parties match any party named in the question. These chunks are
@@ -412,48 +427,42 @@ def _scope_chunks_by_party(question: str, chunks: List[dict]) -> List[dict]:
         question parties — this is the right document.
 
       NO CHANGE: chunk has no [Parties: ...] label (unlabelled docs are kept
-        so we never silently drop content from docs ingested before this feature).
-
-    Safety: if the question names no parties at all, scoping is skipped and
-    all chunks are returned unchanged.
+        as candidates since most agency docs don't have party metadata).
     """
     question_parties = _extract_parties_from_question(question)
-    if not question_parties:
-        return chunks  # no named parties in question — no scoping needed
 
-    scoped: List[dict] = []
+    if not question_parties:
+        return chunks
+
+    scoped = []
     excluded = 0
 
-    for chunk in chunks:
-        content = chunk.get("content", "")
-        c = dict(chunk)
+    for c in chunks:
+        content = c.get("content", "")
+        meta = c.get("metadata") or {}
+        chunk_parties: List[str] = meta.get("parties", [])
 
-        # Extract [Parties: ...] from the chunk label if present
-        parties_match = re.search(r'\[Parties:\s*([^\]]+)\]', content)
-        chunk_parties: List[str] = []
-        if parties_match:
-            raw = parties_match.group(1)
-            chunk_parties = [p.strip().lower() for p in raw.split(",") if p.strip()]
+        # Also try to extract party tags from the chunk label text itself
+        label_match = re.search(r'\[Parties:\s*([^\]]+)\]', content)
+        if label_match and not chunk_parties:
+            chunk_parties = [p.strip().lower() for p in label_match.group(1).split(",")]
 
         if chunk_parties:
-            matched = sum(
+            matches = sum(
                 1 for qp in question_parties
                 if any(qp in cp or cp in qp for cp in chunk_parties)
             )
-            if matched == 0:
-                # Hard exclude — this document's parties don't match the question
+            if matches == 0:
                 excluded += 1
                 continue
-            # Boost matching chunks
-            adjustment = min(0.15 * matched, 0.30)
-            current = float(c.get("similarity", 0))
-            c["similarity"] = min(1.0, current + adjustment)
-            c["_party_adjustment"] = adjustment
+            boost = min(0.30, matches * 0.15)
+            c2 = dict(c)
+            c2["similarity"] = min(1.0, float(c.get("similarity", 0)) + boost)
+            c2["_party_adjustment"] = boost
+            scoped.append(c2)
         else:
-            # No party metadata — keep but don't adjust
             c["_party_adjustment"] = 0.0
-
-        scoped.append(c)
+            scoped.append(c)
 
     if excluded:
         logger.info(
@@ -604,6 +613,9 @@ async def _answer_general_chat(question: str, session_id: Optional[str] = None) 
 
 
 # ── System prompt – Aria identity ─────────────────────────────────────────────
+# FIX 2: Replaced legal-document math example (page reproduction costs) with
+# agency-relevant arithmetic (ROAS, CPL, budget pacing) so the model's
+# reasoning is primed for the right domain.
 
 _SYSTEM_PROMPT = """\
 You are **Aria**, an AI employee and digital brain of this agency. \
@@ -624,7 +636,7 @@ Core rules:
 3. Numbers, prices, metrics, and dates in the context are facts — cite them precisely.
 4. Synthesise across multiple documents when the answer spans sources.
 4b. If two source documents give DIFFERENT answers to the same question (e.g. different \
-    notice periods, different termination terms), explicitly state both answers and identify \
+    retainer rates, different onboarding timelines), explicitly state both answers and identify \
     which document each comes from. Never silently pick one — surface the conflict.
 5. Only say you cannot find information when it is genuinely absent from ALL provided context.
 6. Do not add a "Sources" section or bracket citations in the answer body.
@@ -632,16 +644,18 @@ Core rules:
    (e.g., "As I mentioned earlier…").
 8. Keep responses structured — use bullet points or numbered lists where they improve clarity.
 9. SOURCE ISOLATION — CRITICAL: Every clause, threshold, obligation, or term belongs to a \
-   specific document and a specific set of parties. NEVER apply a clause from Document A to \
-   answer a question about Document B. If a question names a specific contract or party, \
-   only use chunks explicitly sourced from that document. If you find a relevant-sounding \
-   clause but it comes from a different document than the one being asked about, say so \
-   explicitly rather than applying it across contracts.
-10. MATH AND THRESHOLD REASONING: If a question involves a quantity and a threshold from \
-    the documents, always compute the arithmetic explicitly before concluding. \
-    Show the calculation step (e.g. "4,000 pages × $0.15 = $600, which exceeds the $500 \
-    threshold") before stating the answer. Never skip the calculation and jump to a conclusion. \
-    Cite the exact threshold figure from the document — do not round or approximate it.
+   specific document and a specific set of parties or clients. NEVER apply information from \
+   Document A to answer a question about Document B. If a question names a specific client, \
+   campaign, or brief, only use chunks explicitly sourced from that document. If you find \
+   relevant-sounding content but it comes from a different client or document, say so \
+   explicitly rather than applying it across contexts.
+10. MATH AND THRESHOLD REASONING: If a question involves a quantity and a threshold or rate \
+    from the documents, always compute the arithmetic explicitly before concluding. \
+    Show the calculation step before stating the answer — never skip to a conclusion. \
+    Examples of the kind of reasoning expected: \
+    "$4,200 ad spend × 4.5x ROAS = $18,900 attributed revenue, which exceeds the $15,000 \
+    monthly target"; or "62 leads × $38 CPL = $2,356 total acquisition cost, within the \
+    $2,500 budget ceiling". Cite the exact figures from the document — do not round or approximate.
 """
 
 
@@ -759,8 +773,8 @@ async def query_knowledge(
 
             # 3a. Party-scoped re-ranking: boost chunks from documents whose
             # parties match named entities in the question; demote others.
-            # This prevents cross-contract contamination (e.g. NDA clauses
-            # being applied to answer questions about the engagement letter).
+            # This prevents cross-document contamination (e.g. a clause from
+            # one client brief leaking into an answer about another client).
             chunks = _scope_chunks_by_party(question, chunks)
 
             # 3b. Hybrid fusion (dense + lexical/fuzzy)
@@ -859,5 +873,3 @@ async def query_knowledge(
         _push_history(session_id, "assistant", answer)
 
     return {"answer": answer, "sources": sources}
-
-

@@ -786,6 +786,7 @@ textarea.form-input{resize:vertical;min-height:80px;font-family:var(--font);font
     <div class="cmd-actions">
       <input class="cmd-input" id="cmd-ask" placeholder="Ask Leo..." onkeydown="if(event.key==='Enter'){event.preventDefault();quickAskAria()}">
       <button class="btn btn-ghost" id="cmd-ask-btn" onclick="quickAskAria()">Ask Leo</button>
+      <button class="btn btn-ghost" id="persona-switch-top-btn" onclick="togglePersona()">Persona: Law Firm</button>
       <button class="btn btn-ghost compact-toggle" data-compact-toggle onclick="toggleCompactMode()" aria-pressed="false">
         <span class="compact-switch" aria-hidden="true"><span class="compact-knob"></span></span>
         <span class="compact-label">Compact: Off</span>
@@ -1032,10 +1033,12 @@ function applyPersonaUi() {
   const cfgPersona = document.getElementById('cfg-persona');
   if (cfgPersona) cfgPersona.value = C.persona;
 
+  const personaLabel = `Persona: ${C.persona === 'agency' ? 'Digital Agency' : 'Law Firm'}`;
   const switchBtn = document.getElementById('persona-switch-btn');
-  if (switchBtn) {
-    switchBtn.textContent = `Persona: ${C.persona === 'agency' ? 'Digital Agency' : 'Law Firm'}`;
-  }
+  if (switchBtn) switchBtn.textContent = personaLabel;
+
+  const switchTopBtn = document.getElementById('persona-switch-top-btn');
+  if (switchTopBtn) switchTopBtn.textContent = personaLabel;
 
   if (TITLES.chat !== P.ask_label) TITLES.chat = P.ask_label;
   renderChatEmpty();

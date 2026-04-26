@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import os
+from contextvars import ContextVar, Token
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 
 @dataclass(frozen=True)
@@ -71,10 +72,26 @@ PERSONA_MAP: Dict[str, PersonaConfig] = {
     ),
 }
 
+_persona_override: ContextVar[Optional[str]] = ContextVar("persona_override", default=None)
+
 
 def get_persona_key() -> str:
+    override = _persona_override.get()
+    if override and override in PERSONA_MAP:
+        return override
+
     raw = (os.environ.get("PERSONA") or "law_firm").strip().lower()
     return raw if raw in PERSONA_MAP else "law_firm"
+
+
+def set_persona_override(persona_key: Optional[str]) -> Token:
+    normalized = (persona_key or "").strip().lower()
+    value = normalized if normalized in PERSONA_MAP else None
+    return _persona_override.set(value)
+
+
+def reset_persona_override(token: Token) -> None:
+    _persona_override.reset(token)
 
 
 def get_persona_config() -> PersonaConfig:

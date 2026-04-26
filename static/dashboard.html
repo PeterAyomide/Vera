@@ -756,6 +756,7 @@ textarea.form-input{resize:vertical;min-height:80px;font-family:var(--font);font
   </div>
 
   <div class="sidebar-bottom">
+    <div class="cfg-btn" id="persona-switch-btn" onclick="togglePersona()">Persona: Law Firm</div>
     <div class="cfg-btn" onclick="openSettings()">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 1.41 14.14m-1.41 0A10 10 0 0 1 4.93 4.93m14.14 14.14A10 10 0 0 1 4.93 4.93"/></svg>
       Configure API
@@ -906,6 +907,7 @@ textarea.form-input{resize:vertical;min-height:80px;font-family:var(--font);font
   <div class="modal">
     <div class="modal-head"><div class="modal-title">Configure API</div><button class="close-btn" onclick="closeSettings()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
     <div class="modal-body">
+      <div class="form-group"><div class="form-label">Demo Persona</div><select class="form-input" id="cfg-persona"><option value="law_firm">Law Firm</option><option value="agency">Digital Agency</option></select><div class="form-hint">Switches prompt behavior and UI copy for demos.</div></div>
       <div class="form-group"><div class="form-label">API Base URL</div><input class="form-input" id="cfg-url" placeholder="https://your-vera-app.railway.app"><div class="form-hint">The URL your Vera backend is deployed to.</div></div>
       <div class="form-group"><div class="form-label">API Key</div><input class="form-input" id="cfg-key" type="password" placeholder="your-secret-api-key"><div class="form-hint">The API_KEY value from your .env file.</div></div>
       <div class="form-group"><div class="form-label" id="cfg-name-label">Firm Name</div><input class="form-input" id="cfg-name" placeholder="Adewale & Partners LLP"></div>
@@ -938,6 +940,7 @@ let C = {
   url:  localStorage.getItem('v_url')  || '',
   key:  localStorage.getItem('v_key')  || '',
   name: localStorage.getItem('v_name') || 'Your Firm',
+  persona: localStorage.getItem('v_persona') || 'law_firm',
 };
 
 let P = {
@@ -988,7 +991,11 @@ window.onload = async () => {
 async function loadPersonaConfig() {
   const target = C.url ? `${C.url}/config` : '/config';
   try {
-    const res = await fetch(target);
+    const res = await fetch(target, {
+      headers: {
+        'X-Persona': C.persona,
+      },
+    });
     if (!res.ok) return;
     const payload = await res.json();
     P = { ...P, ...(payload || {}) };
@@ -1021,6 +1028,14 @@ function applyPersonaUi() {
 
   const cfgName = document.getElementById('cfg-name');
   if (cfgName) cfgName.placeholder = P.settings_org_placeholder;
+
+  const cfgPersona = document.getElementById('cfg-persona');
+  if (cfgPersona) cfgPersona.value = C.persona;
+
+  const switchBtn = document.getElementById('persona-switch-btn');
+  if (switchBtn) {
+    switchBtn.textContent = `Persona: ${C.persona === 'agency' ? 'Digital Agency' : 'Law Firm'}`;
+  }
 
   if (TITLES.chat !== P.ask_label) TITLES.chat = P.ask_label;
   renderChatEmpty();
@@ -1059,14 +1074,21 @@ async function loadAll() {
 // ── API ───────────────────────────────────────────────────────────────────────
 async function api(path, method='GET', body=null) {
   if (!C.url || !C.key) throw new Error('Not configured');
-  const opts = { method, headers: { 'Content-Type':'application/json', 'X-API-Key': C.key } };
+  const opts = {
+    method,
+    headers: {
+      'Content-Type':'application/json',
+      'X-API-Key': C.key,
+      'X-Persona': C.persona,
+    },
+  };
   if (body) opts.body = JSON.stringify(body);
   const res = await fetch(C.url + path, opts);
   if (!res.ok) { const e = await res.json().catch(()=>({detail:res.statusText})); throw new Error(e.detail||'API error'); }
   return res.json();
 }
 async function apiUpload(path, fd) {
-  const res = await fetch(C.url + path, { method:'POST', headers:{'X-API-Key':C.key}, body:fd });
+  const res = await fetch(C.url + path, { method:'POST', headers:{'X-API-Key':C.key, 'X-Persona': C.persona}, body:fd });
   if (!res.ok) throw new Error('Upload failed');
   return res.json();
 }
@@ -1815,8 +1837,24 @@ function quickUploadDoc(){
   document.getElementById('file-input')?.click();
 }
 
+async function togglePersona() {
+  C.persona = C.persona === 'agency' ? 'law_firm' : 'agency';
+  localStorage.setItem('v_persona', C.persona);
+  await loadPersonaConfig();
+  applyPersonaUi();
+  if (!localStorage.getItem('v_name')) {
+    C.name = P.default_org_name;
+    document.getElementById('agency-name').textContent = C.name;
+  }
+  toast(`Switched to ${C.persona === 'agency' ? 'Digital Agency' : 'Law Firm'} persona`);
+  clearChatUI();
+  if (C.url && C.key) loadAll();
+}
+
 // ── SETTINGS ──────────────────────────────────────────────────────────────────
 function openSettings(){
+  const cfgPersona = document.getElementById('cfg-persona');
+  if (cfgPersona) cfgPersona.value = C.persona;
   document.getElementById('cfg-url').value=C.url;
   document.getElementById('cfg-key').value=C.key;
   document.getElementById('cfg-name').value=C.name;
@@ -1828,12 +1866,15 @@ function openSettings(){
 }
 function closeSettings(){document.getElementById('settings-modal').classList.add('hidden')}
 async function saveSettings(){
+  const cfgPersona = document.getElementById('cfg-persona');
+  C.persona=(cfgPersona?.value || 'law_firm').trim();
   C.url=(document.getElementById('cfg-url').value.trim()).replace(/\/$/,'');
   C.key=document.getElementById('cfg-key').value.trim();
   C.name=document.getElementById('cfg-name').value.trim()||P.default_org_name;
   localStorage.setItem('v_url',C.url);
   localStorage.setItem('v_key',C.key);
   localStorage.setItem('v_name',C.name);
+  localStorage.setItem('v_persona',C.persona);
 
   await loadPersonaConfig();
   applyPersonaUi();

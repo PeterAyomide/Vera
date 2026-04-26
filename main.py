@@ -45,7 +45,12 @@ from services.chat_service import (
     save_message, load_messages, update_session_title,
 )
 from services.db import supabase
-from services.persona import get_persona_config, get_ui_persona_payload
+from services.persona import (
+    get_persona_config,
+    get_ui_persona_payload,
+    set_persona_override,
+    reset_persona_override,
+)
 
 # ── Pydantic models ───────────────────────────────────────────────────────────
 
@@ -152,9 +157,18 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=ORIGINS,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "X-API-Key", "Authorization"],
+    allow_headers=["Content-Type", "X-API-Key", "Authorization", "X-Persona"],
     allow_credentials=True,
 )
+
+
+@app.middleware("http")
+async def persona_middleware(request: Request, call_next):
+    token = set_persona_override(request.headers.get("X-Persona"))
+    try:
+        return await call_next(request)
+    finally:
+        reset_persona_override(token)
 
 # ─── Health & UI ──────────────────────────────────────────────────────────────
 

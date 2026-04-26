@@ -1,4 +1,4 @@
-# Vera — AI Operating System for Digital Agencies
+# Vera — AI Operating System (Law Firms + Digital Agencies)
 
 Three capabilities. One dashboard.
 
@@ -39,7 +39,15 @@ SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_SERVICE_KEY=eyJ...your service role key...
 GITHUB_TOKEN=ghp_...your token...
 API_KEY=make-up-any-secret-string-here
+PERSONA=law_firm
+ASSISTANT_NAME=Leo
 ```
+
+Persona options:
+
+- `PERSONA=law_firm` (default) for law-firm demos
+- `PERSONA=agency` for digital-agency demos
+- Optional: set `ASSISTANT_NAME` to override the assistant display name
 
 ### Step 4 — Install dependencies
 
@@ -66,7 +74,7 @@ Open `http://localhost:8000`
 Click **Configure API** in the sidebar:
 - API Base URL: `http://localhost:8000`
 - API Key: whatever you set as `API_KEY` in `.env`
-- Agency Name: your agency's name
+- Firm/Agency Name: your organization name for the active persona
 
 ---
 

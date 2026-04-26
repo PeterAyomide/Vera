@@ -719,7 +719,7 @@ textarea.form-input{resize:vertical;min-height:80px;font-family:var(--font);font
       <div class="logo-mark">V</div>
       <div>
         <div class="logo-text">Vera</div>
-        <div class="logo-sub">Agency Intelligence</div>
+        <div class="logo-sub" id="logo-sub">Legal Intelligence</div>
       </div>
     </div>
   </div>
@@ -737,14 +737,14 @@ textarea.form-input{resize:vertical;min-height:80px;font-family:var(--font);font
     </div>
     <div class="nav-item" id="nav-chat" onclick="showView('chat')">
       <div class="nav-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
-      Ask Aria
+      <span id="nav-chat-label">Ask Leo</span>
     </div>
   </div>
 
   <!-- Chat Sessions -->
   <div class="chat-sessions-area">
     <div class="sessions-head">
-      <div class="sessions-label" onclick="showView('chat')" style="cursor:pointer" title="Go to chat">Ask Aria</div>
+      <div class="sessions-label" id="sessions-label" onclick="showView('chat')" style="cursor:pointer" title="Go to chat">Ask Leo</div>
       <button class="new-chat-btn" onclick="newChat()">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         New
@@ -763,7 +763,7 @@ textarea.form-input{resize:vertical;min-height:80px;font-family:var(--font);font
     <div class="user-row">
       <div class="avatar">V</div>
       <div>
-        <div class="user-name" id="agency-name">Your Agency</div>
+        <div class="user-name" id="agency-name">Your Firm</div>
         <div class="user-role">Admin</div>
       </div>
     </div>
@@ -783,8 +783,8 @@ textarea.form-input{resize:vertical;min-height:80px;font-family:var(--font);font
       <div class="cmd-sub" id="page-title">AI Operating System</div>
     </div>
     <div class="cmd-actions">
-      <input class="cmd-input" id="cmd-ask" placeholder="Ask Aria..." onkeydown="if(event.key==='Enter'){event.preventDefault();quickAskAria()}">
-      <button class="btn btn-ghost" onclick="quickAskAria()">Ask Aria</button>
+      <input class="cmd-input" id="cmd-ask" placeholder="Ask Leo..." onkeydown="if(event.key==='Enter'){event.preventDefault();quickAskAria()}">
+      <button class="btn btn-ghost" id="cmd-ask-btn" onclick="quickAskAria()">Ask Leo</button>
       <button class="btn btn-ghost compact-toggle" data-compact-toggle onclick="toggleCompactMode()" aria-pressed="false">
         <span class="compact-switch" aria-hidden="true"><span class="compact-knob"></span></span>
         <span class="compact-label">Compact: Off</span>
@@ -866,20 +866,20 @@ textarea.form-input{resize:vertical;min-height:80px;font-family:var(--font);font
       <div class="chat-messages" id="chat-messages">
         <div class="chat-empty" id="chat-empty">
           <div class="chat-empty-icon">◈</div>
-          <div class="chat-empty-title">Ask Aria</div>
-          <div class="chat-empty-sub">Ask naturally. Aria uses uploaded documents when needed, and handles general questions smoothly.</div>
-          <div class="chips">
-            <div class="chip" onclick="sendChat('What are our standard retainer rates?')">Retainer rates?</div>
-            <div class="chip" onclick="sendChat('What did we charge for our last brand project?')">Last brand project?</div>
-            <div class="chip" onclick="sendChat('What is our typical website delivery timeline?')">Website timeline?</div>
-            <div class="chip" onclick="sendChat('What services do we offer?')">Our services?</div>
+          <div class="chat-empty-title" id="chat-empty-title">Ask Leo</div>
+          <div class="chat-empty-sub" id="chat-empty-sub">Ask about matters, billing, precedents, or firm operations. Leo uses uploaded documents when relevant.</div>
+          <div class="chips" id="chat-chips">
+            <div class="chip" onclick="sendChat('What practice areas do we cover?')">Practice areas?</div>
+            <div class="chip" onclick="sendChat('What billing models do we use for clients?')">Billing models?</div>
+            <div class="chip" onclick="sendChat('What is our standard matter intake process?')">Matter intake?</div>
+            <div class="chip" onclick="sendChat('What response timeline do we promise new clients?')">Response timelines?</div>
           </div>
         </div>
       </div>
       <div class="chat-foot">
         <div class="chat-hint"><div class="hint-dot"></div>Knowledge-aware assistant with general conversation support</div>
         <div class="chat-input-row">
-          <input class="chat-input" id="chat-input" placeholder="Ask anything about your agency…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatInput()}">
+          <input class="chat-input" id="chat-input" placeholder="Ask anything about your firm..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatInput()}">
           <button class="send-btn" onclick="sendChatInput()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0c0c0c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9z"/></svg></button>
         </div>
       </div>
@@ -908,7 +908,7 @@ textarea.form-input{resize:vertical;min-height:80px;font-family:var(--font);font
     <div class="modal-body">
       <div class="form-group"><div class="form-label">API Base URL</div><input class="form-input" id="cfg-url" placeholder="https://your-vera-app.railway.app"><div class="form-hint">The URL your Vera backend is deployed to.</div></div>
       <div class="form-group"><div class="form-label">API Key</div><input class="form-input" id="cfg-key" type="password" placeholder="your-secret-api-key"><div class="form-hint">The API_KEY value from your .env file.</div></div>
-      <div class="form-group"><div class="form-label">Agency Name</div><input class="form-input" id="cfg-name" placeholder="Pinnacle Creative Studio"></div>
+      <div class="form-group"><div class="form-label" id="cfg-name-label">Firm Name</div><input class="form-input" id="cfg-name" placeholder="Adewale & Partners LLP"></div>
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeSettings()">Cancel</button><button class="btn btn-primary" onclick="saveSettings()">Save & Connect</button></div>
   </div>
@@ -937,7 +937,29 @@ textarea.form-input{resize:vertical;min-height:80px;font-family:var(--font);font
 let C = {
   url:  localStorage.getItem('v_url')  || '',
   key:  localStorage.getItem('v_key')  || '',
-  name: localStorage.getItem('v_name') || 'Your Agency',
+  name: localStorage.getItem('v_name') || 'Your Firm',
+};
+
+let P = {
+  persona: 'law_firm',
+  assistant_name: 'Leo',
+  org_noun: 'firm',
+  logo_subtitle: 'Legal Intelligence',
+  ask_label: 'Ask Leo',
+  chat_empty_subtitle: 'Ask about matters, billing, precedents, or firm operations. Leo uses uploaded documents when relevant.',
+  chat_input_placeholder: 'Ask anything about your firm...',
+  command_placeholder: 'Ask Leo...',
+  settings_org_label: 'Firm Name',
+  settings_org_placeholder: 'Adewale & Partners LLP',
+  default_org_name: 'Your Firm',
+  draft_instruction: 'Use relevant law-firm knowledge where helpful.',
+  normalize_from_terms: ['this agency', 'our agency', 'this law firm', 'our law firm'],
+  chips: [
+    { label: 'Practice areas?', query: 'What practice areas do we cover?' },
+    { label: 'Billing models?', query: 'What billing models do we use for clients?' },
+    { label: 'Matter intake?', query: 'What is our standard matter intake process?' },
+    { label: 'Response timelines?', query: 'What response timeline do we promise new clients?' },
+  ],
 };
 
 // ── STATE ────────────────────────────────────────────────────────────────────
@@ -951,12 +973,58 @@ let analyticsState = { stats: {}, trends: { daily: [], summary: {} }, atRisk: []
 let compactMode = localStorage.getItem('v_pipeline_compact') === '1';
 
 // ── BOOT ─────────────────────────────────────────────────────────────────────
-window.onload = () => {
+window.onload = async () => {
+  await loadPersonaConfig();
+  applyPersonaUi();
+  if (!localStorage.getItem('v_name') || localStorage.getItem('v_name') === 'Your Agency') {
+    C.name = P.default_org_name;
+  }
   document.getElementById('agency-name').textContent = C.name;
   applyPipelineDensity();
   if (!C.url || !C.key) { openSettings(); return; }
   loadAll();
 };
+
+async function loadPersonaConfig() {
+  const target = C.url ? `${C.url}/config` : '/config';
+  try {
+    const res = await fetch(target);
+    if (!res.ok) return;
+    const payload = await res.json();
+    P = { ...P, ...(payload || {}) };
+  } catch (_) {
+    // Keep defaults if persona config endpoint is unavailable.
+  }
+}
+
+function applyPersonaUi() {
+  const textBindings = [
+    ['logo-sub', P.logo_subtitle],
+    ['nav-chat-label', P.ask_label],
+    ['sessions-label', P.ask_label],
+    ['chat-empty-title', P.ask_label],
+    ['chat-empty-sub', P.chat_empty_subtitle],
+    ['cfg-name-label', P.settings_org_label],
+    ['cmd-ask-btn', P.ask_label],
+  ];
+
+  textBindings.forEach(([id, value]) => {
+    const node = document.getElementById(id);
+    if (node && value) node.textContent = value;
+  });
+
+  const cmdAsk = document.getElementById('cmd-ask');
+  if (cmdAsk) cmdAsk.placeholder = P.command_placeholder;
+
+  const chatInput = document.getElementById('chat-input');
+  if (chatInput) chatInput.placeholder = P.chat_input_placeholder;
+
+  const cfgName = document.getElementById('cfg-name');
+  if (cfgName) cfgName.placeholder = P.settings_org_placeholder;
+
+  if (TITLES.chat !== P.ask_label) TITLES.chat = P.ask_label;
+  renderChatEmpty();
+}
 
 function applyPipelineDensity() {
   const pipelineView = document.getElementById('view-pipeline');
@@ -1367,7 +1435,7 @@ async function genDraft(id) {
   try {
     pushActivity('✉', `Outreach engine drafting an email for ${l.company||l.name}`);
     const draft = await api('/query','POST',{
-      question: `Write a professional first-touch email to ${l.name} at ${l.company||'their company'} who said: "${l.notes||''}". Use relevant agency knowledge where helpful. Keep it under 180 words and end with a clear CTA.`,
+      question: `Write a professional first-touch email to ${l.name} at ${l.company||'their company'} who said: "${l.notes||''}". ${P.draft_instruction} Keep it under 180 words and end with a clear CTA.`,
       top_k: 3,
     });
     const cleanDraft = stripInlineSources(draft.answer || '');
@@ -1521,18 +1589,29 @@ async function delSession(e, id) {
 
 function clearChatUI() {
   const container = document.getElementById('chat-messages');
-  container.innerHTML = `
-    <div class="chat-empty" id="chat-empty">
-      <div class="chat-empty-icon">◈</div>
-      <div class="chat-empty-title">Ask Aria</div>
-      <div class="chat-empty-sub">Ask about docs, leads, or general workflow. Aria uses knowledge base context when relevant.</div>
-      <div class="chips">
-        <div class="chip" onclick="sendChat('What are our standard retainer rates?')">Retainer rates?</div>
-        <div class="chip" onclick="sendChat('What did we charge for our last brand project?')">Last brand project?</div>
-        <div class="chip" onclick="sendChat('What is our typical website delivery timeline?')">Website timeline?</div>
-        <div class="chip" onclick="sendChat('What services do we offer?')">Our services?</div>
-      </div>
-    </div>`;
+  container.innerHTML = `<div class="chat-empty" id="chat-empty"></div>`;
+  renderChatEmpty();
+}
+
+function renderChatEmpty() {
+  const empty = document.getElementById('chat-empty');
+  if (!empty) return;
+
+  // Agency reference (kept for future demos):
+  // Ask Aria with retainer, brand project, and website timeline chips.
+  const chips = Array.isArray(P.chips) ? P.chips : [];
+  const chipsHtml = chips.map((chip) => {
+    const label = escHtml(chip.label || '');
+    const query = JSON.stringify(String(chip.query || ''));
+    return `<div class="chip" onclick="sendChat(${query})">${label}</div>`;
+  }).join('');
+
+  empty.innerHTML = `
+    <div class="chat-empty-icon">◈</div>
+    <div class="chat-empty-title" id="chat-empty-title">${escHtml(P.ask_label)}</div>
+    <div class="chat-empty-sub" id="chat-empty-sub">${escHtml(P.chat_empty_subtitle)}</div>
+    <div class="chips" id="chat-chips">${chipsHtml}</div>
+  `;
 }
 
 // ── KNOWLEDGE CHAT ────────────────────────────────────────────────────────────
@@ -1542,13 +1621,18 @@ function sendChatInput(){
   inp.value='';sendChat(q);
 }
 
-function normalizeAgencyQuestion(question) {
+function normalizePersonaQuestion(question) {
   const q = String(question || '');
-  const agency = (C.name || '').trim();
-  if (!agency || agency.toLowerCase() === 'your agency') return q;
-  return q
-    .replace(/\bthis agency\b/gi, agency)
-    .replace(/\bour agency\b/gi, agency);
+  const org = (C.name || '').trim();
+  if (!org) return q;
+
+  let normalized = q;
+  const terms = Array.isArray(P.normalize_from_terms) ? P.normalize_from_terms : [];
+  terms.forEach((term) => {
+    const escaped = String(term).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    normalized = normalized.replace(new RegExp(`\\b${escaped}\\b`, 'gi'), org);
+  });
+  return normalized;
 }
 
 async function sendChat(question) {
@@ -1570,7 +1654,7 @@ async function sendChat(question) {
 
   try {
     pushActivity('📚', 'CorporateBrain searched knowledge base and conversation context');
-    const queryForApi = normalizeAgencyQuestion(question);
+    const queryForApi = normalizePersonaQuestion(question);
     const res = await api('/query','POST',{
       question: queryForApi,
       top_k:5,
@@ -1696,7 +1780,7 @@ function renderDocs() {
 }
 
 // ── NAVIGATION ────────────────────────────────────────────────────────────────
-const TITLES={pipeline:'Lead Pipeline',chat:'Ask Aria',docs:'Documents'};
+const TITLES={pipeline:'Lead Pipeline',chat:'Ask Leo',docs:'Documents'};
 function showView(v){
   document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
@@ -1736,16 +1820,24 @@ function openSettings(){
   document.getElementById('cfg-url').value=C.url;
   document.getElementById('cfg-key').value=C.key;
   document.getElementById('cfg-name').value=C.name;
+  const cfgLabel = document.getElementById('cfg-name-label');
+  if (cfgLabel) cfgLabel.textContent = P.settings_org_label;
+  const cfgName = document.getElementById('cfg-name');
+  if (cfgName) cfgName.placeholder = P.settings_org_placeholder;
   document.getElementById('settings-modal').classList.remove('hidden');
 }
 function closeSettings(){document.getElementById('settings-modal').classList.add('hidden')}
-function saveSettings(){
+async function saveSettings(){
   C.url=(document.getElementById('cfg-url').value.trim()).replace(/\/$/,'');
   C.key=document.getElementById('cfg-key').value.trim();
-  C.name=document.getElementById('cfg-name').value.trim()||'Your Agency';
+  C.name=document.getElementById('cfg-name').value.trim()||P.default_org_name;
   localStorage.setItem('v_url',C.url);
   localStorage.setItem('v_key',C.key);
   localStorage.setItem('v_name',C.name);
+
+  await loadPersonaConfig();
+  applyPersonaUi();
+
   document.getElementById('agency-name').textContent=C.name;
   closeSettings();
   toast('Saved — connecting…');

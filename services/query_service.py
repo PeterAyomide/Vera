@@ -26,6 +26,7 @@ from rank_bm25 import BM25Okapi
 from openai import AsyncOpenAI
 
 from services.db import supabase
+from services.persona import get_persona_config
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +67,7 @@ BUSINESS_QUERY_KEYWORDS = {
     "agency", "client", "clients", "lead", "leads", "pricing", "retainer", "service",
     "services", "proposal", "project", "pipeline", "qualification", "outreach", "email",
     "sales", "conversion", "close", "playbook", "onboarding", "timeline",
+    "firm", "matter", "case", "billing", "conflict", "deadline", "court", "hearing",
 }
 
 CASUAL_QUERY_MARKERS = {
@@ -78,10 +80,10 @@ FAST_OUTREACH_MARKERS = {
     "cold email", "follow-up email", "intro email",
 }
 
-# ── FIX 1: Agency-tuned domain synonym map ────────────────────────────────────
-# Removed legal-document artifacts (document reproduction / photocopy clauses).
-# Added agency acronyms and terminology that appear in briefs, reports, and decks.
-DOMAIN_SYNONYM_MAP = {
+# ── Persona-specific domain synonym maps ──────────────────────────────────────
+# Agency reference (kept for future demos):
+# DOMAIN_SYNONYM_MAP originally only covered agency acronyms and deliverables.
+_AGENCY_DOMAIN_SYNONYM_MAP = {
     "monthly package": ["retainer", "monthly retainer", "ongoing package"],
     "price": ["pricing", "rate", "cost", "fee"],
     "website": ["web project", "site build", "web design"],
@@ -105,6 +107,28 @@ DOMAIN_SYNONYM_MAP = {
     "sop": ["standard operating procedure", "process document", "playbook", "guidelines"],
     "case study": ["client success story", "result showcase", "client outcome"],
 }
+
+_LAW_FIRM_DOMAIN_SYNONYM_MAP = {
+    "practice area": ["legal practice", "service line", "matter category"],
+    "intake": ["matter intake", "client intake", "new matter screening"],
+    "billing": ["fee structure", "hourly rate", "flat fee", "retainer"],
+    "retainer": ["engagement retainer", "advance fee", "trust deposit"],
+    "conflict": ["conflict check", "conflicts review", "conflict screening"],
+    "deadline": ["filing deadline", "court date", "limitation period"],
+    "settlement": ["settlement value", "settlement range", "settlement posture"],
+    "litigation": ["dispute", "lawsuit", "court proceeding"],
+    "contract": ["agreement", "commercial contract", "contract clause"],
+    "compliance": ["regulatory", "policy compliance", "legal requirement"],
+    "precedent": ["case law", "prior decision", "authority"],
+    "matter": ["case", "file", "engagement"],
+}
+
+
+def _domain_synonym_map() -> Dict[str, List[str]]:
+    persona = get_persona_config()
+    if persona.key == "agency":
+        return _AGENCY_DOMAIN_SYNONYM_MAP
+    return _LAW_FIRM_DOMAIN_SYNONYM_MAP
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -203,7 +227,7 @@ def _strip_noise(text: str) -> str:
 def _apply_domain_synonyms(question: str) -> str:
     q = question
     lower = q.lower()
-    for phrase, expansions in DOMAIN_SYNONYM_MAP.items():
+    for phrase, expansions in _domain_synonym_map().items():
         if phrase in lower:
             q += " " + " ".join(expansions)
     return _strip_noise(q)
@@ -342,6 +366,7 @@ def _is_fast_outreach_request(question: str) -> bool:
 
 async def _clarify_question(question: str) -> str:
     """Produce a concise clarification question while staying conversational."""
+    persona = get_persona_config()
     try:
         completion = await _openai.chat.completions.create(
             model=CHAT_MODEL,
@@ -350,7 +375,7 @@ async def _clarify_question(question: str) -> str:
                 {
                     "role": "system",
                     "content": (
-                        "You are Aria. Ask one concise clarification question to disambiguate "
+                        f"You are {persona.assistant_name}. Ask one concise clarification question to disambiguate "
                         "the user's request for document-backed lookup. "
                         "Offer 2-3 short options. Keep under 35 words."
                     ),
@@ -364,9 +389,15 @@ async def _clarify_question(question: str) -> str:
     except Exception as exc:
         logger.warning("Clarification generation failed: %s", exc)
 
+    persona = get_persona_config()
+    if persona.key == "agency":
+        return (
+            "I can help, but I need a bit more direction. Do you mean pricing, timeline, "
+            "service scope, or a specific campaign or client context?"
+        )
     return (
-        "I can help, but I need a bit more direction. Do you mean pricing, timeline, "
-        "service scope, or a specific campaign or client context?"
+        "I can help, but I need a bit more direction. Do you mean billing, intake workflow, "
+        "a specific matter, or a practice-area question?"
     )
 
 
@@ -581,16 +612,17 @@ def _looks_general_chat(question: str) -> bool:
 
 async def _answer_general_chat(question: str, session_id: Optional[str] = None) -> str:
     """Respond as a helpful assistant when retrieval is not needed."""
+    persona = get_persona_config()
     messages: List[dict] = [
         {
             "role": "system",
             "content": (
-                "You are Aria, an AI employee on this agency's team. "
-                "If asked your name or identity, answer in first person singular: 'I am Aria'. "
-                "Never say 'we go by Aria'. "
+                f"You are {persona.assistant_name}, an AI employee on this {persona.org_noun}'s team. "
+                f"If asked your name or identity, answer in first person singular: 'I am {persona.assistant_name}'. "
+                f"Never say 'we go by {persona.assistant_name}'. "
                 "Assume the user is an internal colleague, not an external customer. "
                 "Avoid customer-support phrasing like apologies or service-agent language. "
-                "You work inside Vera, an AI operating system for agencies with three core jobs: "
+                f"You work inside Vera, an AI operating system for {persona.org_noun}s with three core jobs: "
                 "(1) knowledge retrieval from uploaded docs, "
                 "(2) lead analysis and pipeline support, and "
                 "(3) outreach drafting. "
@@ -612,20 +644,21 @@ async def _answer_general_chat(question: str, session_id: Optional[str] = None) 
     return completion.choices[0].message.content or ""
 
 
-# ── System prompt – Aria identity ─────────────────────────────────────────────
-# FIX 2: Replaced legal-document math example (page reproduction costs) with
-# agency-relevant arithmetic (ROAS, CPL, budget pacing) so the model's
-# reasoning is primed for the right domain.
+def _build_system_prompt() -> str:
+    persona = get_persona_config()
 
-_SYSTEM_PROMPT = """\
-You are **Aria**, an AI employee and digital brain of this agency. \
+    # Agency reference (kept for future demos):
+    # You are **Aria**, an AI employee and digital brain of this agency.
+    if persona.key == "agency":
+        return f"""\
+You are **{persona.assistant_name}**, an AI employee and digital brain of this agency. \
 You are knowledgeable, professional, and slightly personable — like a highly capable senior \
 analyst who genuinely cares about getting the right answer.
 
 You are answering using company knowledge context provided below. \
 Use that context as your source of truth for factual claims.
 
-If asked your name or identity, respond in first person singular with: "I am Aria".
+If asked your name or identity, respond in first person singular with: "I am {persona.assistant_name}".
 Treat the user as an internal colleague by default, not an external customer.
 Do not use customer-support language or formal support disclaimers.
 You operate within Vera, which supports knowledge Q&A, lead intelligence, and outreach drafting.
@@ -641,7 +674,7 @@ Core rules:
 5. Only say you cannot find information when it is genuinely absent from ALL provided context.
 6. Do not add a "Sources" section or bracket citations in the answer body.
 7. If a previous conversation turn is relevant to this question, reference it naturally \
-   (e.g., "As I mentioned earlier…").
+   (e.g., "As I mentioned earlier...").
 8. Keep responses structured — use bullet points or numbered lists where they improve clarity.
 9. SOURCE ISOLATION — CRITICAL: Every clause, threshold, obligation, or term belongs to a \
    specific document and a specific set of parties or clients. NEVER apply information from \
@@ -652,10 +685,35 @@ Core rules:
 10. MATH AND THRESHOLD REASONING: If a question involves a quantity and a threshold or rate \
     from the documents, always compute the arithmetic explicitly before concluding. \
     Show the calculation step before stating the answer — never skip to a conclusion. \
-    Examples of the kind of reasoning expected: \
-    "$4,200 ad spend × 4.5x ROAS = $18,900 attributed revenue, which exceeds the $15,000 \
-    monthly target"; or "62 leads × $38 CPL = $2,356 total acquisition cost, within the \
-    $2,500 budget ceiling". Cite the exact figures from the document — do not round or approximate.
+    Examples: "$4,200 ad spend × 4.5x ROAS = $18,900 attributed revenue". \
+    Cite exact figures from the document — do not round or approximate.
+"""
+
+    return f"""\
+You are **{persona.assistant_name}**, an AI employee and legal knowledge operator for this law firm. \
+You are knowledgeable, precise, and practical — like a strong legal operations lead.
+
+You are answering using firm knowledge context provided below. \
+Use that context as your source of truth for factual claims.
+
+If asked your name or identity, respond in first person singular with: "I am {persona.assistant_name}".
+Treat the user as an internal colleague by default, not an external client.
+Do not use customer-support language or formal support disclaimers.
+You operate within Vera, which supports knowledge Q&A, lead intelligence, and outreach drafting.
+
+Core rules:
+1. Answer directly and concisely. No filler phrases like "Great question".
+2. If context contains the answer, extract and deliver it clearly.
+3. Numbers, deadlines, rates, and dates in context are facts — quote them precisely.
+4. Synthesize across documents when needed, but keep source boundaries strict.
+5. If documents conflict (e.g., different fee ranges or timelines), state both and identify each source.
+6. Only say information is missing if it is genuinely absent from all provided context.
+7. Do not add a separate Sources section or bracket citations in the answer body.
+8. Use structured output (bullets or numbered steps) where it improves clarity.
+9. SOURCE ISOLATION — CRITICAL: Every clause, obligation, or threshold belongs to a specific \
+   document and set of parties. Never apply terms from one matter to another.
+10. If a question involves arithmetic (fees, hours, totals, deadlines), show the calculation step \
+    before concluding and use exact document figures.
 """
 
 
@@ -849,7 +907,7 @@ async def query_knowledge(
     )
 
     # 6. Build messages list — inject session history for memory
-    messages: List[dict] = [{"role": "system", "content": _SYSTEM_PROMPT}]
+    messages: List[dict] = [{"role": "system", "content": _build_system_prompt()}]
     if session_id:
         history = _get_history(session_id)
         messages.extend(history)

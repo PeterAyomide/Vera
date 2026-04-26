@@ -1,4 +1,4 @@
-"""Vera — AI operating system for digital agencies.
+"""Vera — AI operating system with switchable demo personas.
 
 Three capabilities:
   1. CorporateBrain  — upload docs, query via RAG
@@ -45,6 +45,7 @@ from services.chat_service import (
     save_message, load_messages, update_session_title,
 )
 from services.db import supabase
+from services.persona import get_persona_config, get_ui_persona_payload
 
 # ── Pydantic models ───────────────────────────────────────────────────────────
 
@@ -86,7 +87,7 @@ class CreateSessionRequest(BaseModel):
 app = FastAPI(
     title="Vera",
     version="1.0.0",
-    description="AI operating system for digital agencies.",
+    description=get_persona_config().app_description,
 )
 
 # ── Rate limiting ─────────────────────────────────────────────────────────────
@@ -169,6 +170,12 @@ async def serve_dashboard():
 @app.get("/embed.js")
 async def serve_embed():
     return FileResponse("static/embed.js", media_type="application/javascript")
+
+
+@app.get("/config")
+async def get_config():
+    """Public UI-safe persona config for dashboard copy and labels."""
+    return get_ui_persona_payload()
 
 # ─── CorporateBrain: Upload & Ingest ──────────────────────────────────────────
 

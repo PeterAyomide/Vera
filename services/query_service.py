@@ -20,6 +20,8 @@ import json
 import logging
 import os
 import re
+import asyncio
+import time
 from typing import Dict, List, Optional, Tuple
 
 from rank_bm25 import BM25Okapi
@@ -46,6 +48,10 @@ MIN_THRESHOLD = 0.18
 MAX_THRESHOLD = 0.45
 RETRIEVAL_CANDIDATE_MULTIPLIER = 4
 RERANK_SNIPPET_CHARS = 900
+DEFAULT_MAX_QUERY_VARIANTS = 4
+DIRECT_PROBE_CONFIDENCE = 0.50
+EXPANSION_CONFIDENCE_FLOOR = 0.32
+RERANK_MIN_CANDIDATES = 6
 
 # In-memory session store: session_id → [{"role": ..., "content": ...}, ...]
 # Sessions are capped to MAX_HISTORY turns per session.
@@ -362,6 +368,25 @@ def _is_fast_outreach_request(question: str) -> bool:
     has_email_intent = any(m in q for m in FAST_OUTREACH_MARKERS)
     has_generation_verb = any(v in q for v in ("write", "draft", "generate", "compose"))
     return has_email_intent or ("email" in q and has_generation_verb)
+
+
+def _should_expand_query(question: str, probe_conf: float) -> bool:
+    """Gate expensive LLM query expansion behind low-confidence retrieval signals."""
+    q = (question or "").lower().strip()
+    if not q:
+        return False
+    if probe_conf < EXPANSION_CONFIDENCE_FLOOR:
+        return True
+    if len(q.split()) <= 4:
+        return True
+    return any(marker in q for marker in CASUAL_QUERY_MARKERS)
+
+
+def _should_rerank(chunks: List[dict], confidence: float) -> bool:
+    """Only use LLM reranking when candidate ambiguity is likely."""
+    if len(chunks) < RERANK_MIN_CANDIDATES:
+        return False
+    return confidence < 0.56
 
 
 async def _clarify_question(question: str) -> str:
@@ -749,6 +774,7 @@ async def query_knowledge(
 
     Returns {"answer": str, "sources": list[dict]}.
     """
+    start_ts = time.perf_counter()
     logger.info("Query (session=%s): %.80s…", session_id, question)
 
     # 0. Dual-pass routing: probe retrieval first, then decide path.
@@ -756,11 +782,12 @@ async def query_knowledge(
     probe_threshold = _dynamic_threshold(question, probe=True)
     try:
         probe_emb = await _embed_query(question)
-        probe_chunks = _vector_search(
+        probe_chunks = await asyncio.to_thread(
+            _vector_search,
             probe_emb,
-            user_id=user_id,
-            top_k=max(4, min(8, top_k)),
-            threshold=probe_threshold,
+            user_id,
+            max(4, min(8, top_k)),
+            probe_threshold,
         )
         probe_chunks = _deduplicate_chunks(probe_chunks)
     except Exception as exc:
@@ -776,89 +803,107 @@ async def query_knowledge(
         if session_id:
             _push_history(session_id, "user", question)
             _push_history(session_id, "assistant", answer)
+        logger.info("Query completed via general chat path in %.2fms", (time.perf_counter() - start_ts) * 1000)
         return {"answer": answer, "sources": []}
 
-    try:
-        # 1-4. Retrieval strategy: fast path for outreach drafting, full path otherwise.
-        fast_outreach = _is_fast_outreach_request(question)
-        if fast_outreach:
-            logger.info("Using fast outreach retrieval path")
-            query_text = _apply_domain_synonyms(question)
-            emb = await _embed_query(query_text)
-            search_top_k = max(min(top_k + 2, 8), top_k)
-            chunks = _vector_search(
-                emb,
-                user_id=user_id,
-                top_k=search_top_k,
-                threshold=_dynamic_threshold(question, probe=True),
-            )
-            chunks = _deduplicate_chunks(chunks)[:top_k]
-        else:
-            # 1. Expand query
-            queries = await _expand_query(question)
-            # Add domain-aware synonym expansion and multi-hop decomposition.
-            queries.extend(_decompose_query(question))
-            queries.append(_apply_domain_synonyms(question))
-            # De-duplicate query list.
-            dedup_queries: List[str] = []
-            seen_queries = set()
-            for q in queries:
-                k = q.lower().strip()
-                if not k or k in seen_queries:
-                    continue
-                seen_queries.add(k)
-                dedup_queries.append(q)
-            queries = dedup_queries[:8]
-            logger.info("Running %d query variants", len(queries))
-
-            # 2. Embed + search in parallel
-            import asyncio
-            embeddings = await asyncio.gather(*[_embed_query(q) for q in queries])
-
-            all_chunks: List[dict] = []
-            search_top_k = max(top_k * RETRIEVAL_CANDIDATE_MULTIPLIER, top_k)
-            for emb in embeddings:
-                results = _vector_search(
-                    emb,
-                    user_id=user_id,
-                    top_k=search_top_k,
-                    threshold=_dynamic_threshold(question),
-                )
-                all_chunks.extend(results)
-
-            # 3. Deduplicate
-            chunks = _deduplicate_chunks(all_chunks)
-
-            # 3a. Party-scoped re-ranking: boost chunks from documents whose
-            # parties match named entities in the question; demote others.
-            # This prevents cross-document contamination (e.g. a clause from
-            # one client brief leaking into an answer about another client).
-            chunks = _scope_chunks_by_party(question, chunks)
-
-            # 3b. Hybrid fusion (dense + lexical/fuzzy)
-            chunks = _hybrid_fuse(question, chunks)
-            candidate_cap = max(top_k * RETRIEVAL_CANDIDATE_MULTIPLIER, top_k)
-            chunks = chunks[:candidate_cap]
-
-            # 4. LLM rerank (fetches extra chunks then cuts down to top_k)
-            chunks = await _rerank_chunks(question, chunks, top_k=top_k)
-
+    if probe_conf >= DIRECT_PROBE_CONFIDENCE and len(probe_chunks) >= top_k:
+        logger.info("Using direct probe fast path (conf=%.3f, chunks=%d)", probe_conf, len(probe_chunks))
+        chunks = probe_chunks[:top_k]
         confidence = _retrieval_confidence(chunks)
-    except Exception as exc:
-        logger.warning("RAG retrieval failed, falling back to chat-only response: %s", exc)
+    else:
         try:
-            answer = await _answer_general_chat(question, session_id=session_id)
-        except Exception as chat_exc:
-            logger.warning("Fallback chat generation failed: %s", chat_exc)
-            answer = (
-                "I hit a temporary model limit while generating this response. "
-                "Please try again in about a minute."
-            )
+            # 1-4. Retrieval strategy: fast path for outreach drafting, full path otherwise.
+            fast_outreach = _is_fast_outreach_request(question)
+            if fast_outreach:
+                logger.info("Using fast outreach retrieval path")
+                query_text = _apply_domain_synonyms(question)
+                emb = await _embed_query(query_text)
+                search_top_k = max(min(top_k + 2, 8), top_k)
+                chunks = await asyncio.to_thread(
+                    _vector_search,
+                    emb,
+                    user_id,
+                    search_top_k,
+                    _dynamic_threshold(question, probe=True),
+                )
+                chunks = _deduplicate_chunks(chunks)[:top_k]
+            else:
+                # 1. Expand query only when probe confidence is low.
+                queries: List[str] = [question]
+                if _should_expand_query(question, probe_conf):
+                    queries = await _expand_query(question)
+                # Add domain-aware synonym expansion and multi-hop decomposition.
+                queries.extend(_decompose_query(question))
+                queries.append(_apply_domain_synonyms(question))
+                # De-duplicate query list.
+                dedup_queries: List[str] = []
+                seen_queries = set()
+                for q in queries:
+                    k = q.lower().strip()
+                    if not k or k in seen_queries:
+                        continue
+                    seen_queries.add(k)
+                    dedup_queries.append(q)
+                queries = dedup_queries[:DEFAULT_MAX_QUERY_VARIANTS]
+                logger.info("Running %d query variants", len(queries))
 
-        if session_id:
-            _push_history(session_id, "user", question)
-            _push_history(session_id, "assistant", answer)
-        return {"answer": answer, "sources": []}
+                # 2. Embed in parallel
+                embeddings = await asyncio.gather(*[_embed_query(q) for q in queries])
+
+                # 3. Run vector search calls off-event-loop in parallel.
+                search_top_k = max(top_k * RETRIEVAL_CANDIDATE_MULTIPLIER, top_k)
+                search_threshold = _dynamic_threshold(question)
+                search_tasks = [
+                    asyncio.to_thread(
+                        _vector_search,
+                        emb,
+                        user_id,
+                        search_top_k,
+                        search_threshold,
+                    )
+                    for emb in embeddings
+                ]
+                search_results = await asyncio.gather(*search_tasks)
+
+                all_chunks: List[dict] = []
+                for results in search_results:
+                    all_chunks.extend(results)
+
+                # 4. Deduplicate and apply ranking helpers.
+                chunks = _deduplicate_chunks(all_chunks)
+
+                # 4a. Party-scoped re-ranking: boost chunks from documents whose
+                # parties match named entities in the question; demote others.
+                chunks = _scope_chunks_by_party(question, chunks)
+
+                # 4b. Hybrid fusion (dense + lexical/fuzzy)
+                chunks = _hybrid_fuse(question, chunks)
+                candidate_cap = max(top_k * RETRIEVAL_CANDIDATE_MULTIPLIER, top_k)
+                chunks = chunks[:candidate_cap]
+
+                # 4c. LLM rerank only when confidence/candidate count warrants it.
+                pre_rerank_conf = _retrieval_confidence(chunks)
+                if _should_rerank(chunks, pre_rerank_conf):
+                    chunks = await _rerank_chunks(question, chunks, top_k=top_k)
+                else:
+                    chunks = chunks[:top_k]
+
+            confidence = _retrieval_confidence(chunks)
+        except Exception as exc:
+            logger.warning("RAG retrieval failed, falling back to chat-only response: %s", exc)
+            try:
+                answer = await _answer_general_chat(question, session_id=session_id)
+            except Exception as chat_exc:
+                logger.warning("Fallback chat generation failed: %s", chat_exc)
+                answer = (
+                    "I hit a temporary model limit while generating this response. "
+                    "Please try again in about a minute."
+                )
+
+            if session_id:
+                _push_history(session_id, "user", question)
+                _push_history(session_id, "assistant", answer)
+            return {"answer": answer, "sources": []}
 
     if not chunks:
         answer = await _answer_general_chat(question, session_id=session_id)
@@ -924,6 +969,7 @@ async def query_knowledge(
 
     answer = _clean_answer_output(completion.choices[0].message.content or "")
     logger.info("Answer: %.80s…", answer)
+    logger.info("Query completed via RAG path in %.2fms", (time.perf_counter() - start_ts) * 1000)
 
     # 8. Persist session memory
     if session_id:
